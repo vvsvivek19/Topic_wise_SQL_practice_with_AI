@@ -1,0 +1,85 @@
+-- ======================================================================================================================================
+-- 															JOINS
+-- ======================================================================================================================================
+-- CREATE TABLE employees_j (
+--     emp_id INT,
+--     emp_name VARCHAR(50),
+--     dept_id INT,
+--     salary INT
+-- );
+
+-- CREATE TABLE departments_j (
+--     dept_id INT,
+--     dept_name VARCHAR(50),
+--     location VARCHAR(50)
+-- );
+
+-- INSERT INTO employees_j VALUES
+-- (1, 'Amit', 101, 60000),
+-- (2, 'Neha', 102, 50000),
+-- (3, 'Raj', 101, 70000),
+-- (4, 'Sneha', 103, 65000),
+-- (5, 'Karan', NULL, 48000),
+-- (6, 'Pooja', 104, 52000),
+-- (7, 'Vikas', 101, 55000),
+-- (8, 'Anjali', 105, 58000); -- dept_id doesn't exist
+
+-- INSERT INTO departments_j VALUES
+-- (101, 'IT', 'Bangalore'),
+-- (102, 'HR', 'Delhi'),
+-- (103, 'Finance', 'Mumbai'),
+-- (104, 'Admin', 'Pune'),
+-- (106, 'Legal', 'Chennai'); -- no employees
+
+/*
+Challenge #1 (Revised — INNER JOIN)
+Find: Employee name, Department name, Location. Only include employees who have valid department mapping
+Return: emp_name, dept_name location
+*/
+SELECT e.emp_name, d.dept_name, d.location
+FROM employees_j as e 
+INNER JOIN departments_j as d ON e.dept_id = d.dept_id;
+
+/*
+Challenge #2 (LEFT JOIN — Behavior Shift)
+Find: All employees, Along with their department name and location
+Even if they don’t have a valid department
+*/
+SELECT e.emp_name, d.dept_name, d.location
+FROM employees_j as e 
+LEFT JOIN departments_j as d ON e.dept_id = d.dept_id;
+
+/*
+Challenge #3 (LEFT JOIN + Filtering — Classic Trap)
+Find: Employees who do NOT have a valid department
+*/
+SELECT e.emp_name
+FROM employees_j as e 
+LEFT JOIN departments_j as d ON e.dept_id = d.dept_id
+WHERE d.dept_name is null;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
