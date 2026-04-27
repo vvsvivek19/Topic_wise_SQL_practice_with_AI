@@ -238,7 +238,7 @@ WHERE department not in (SELECT department FROM employees GROUP BY department HA
 ORDER BY salary DESC;
 
 /*
--- Correlated Subquery
+-- Correlated Subquery: https://www.datacamp.com/tutorial/correlated-subquery
 Find employees who: Earn more than the average salary of their own department
 Return: emp_name, department, salary
 Sort by: salary DESC
