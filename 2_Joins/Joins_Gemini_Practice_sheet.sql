@@ -168,8 +168,8 @@ Constraint: Only show employees who are actually assigned to that specific proje
 SELECT e.FirstName, e.LastName, d.DeptName, p.ProjectName FROM employees_joins e
 JOIN employee_projects ep ON e.EmployeeID = ep.EmployeeID
 JOIN department_joins d ON d.DeptID = e.DeptID
-JOIN projects p ON p.ProjectID = ep.ProjectID;
-
+JOIN projects p ON p.ProjectID = ep.ProjectID
+WHERE p.ProjectName = 'Cloud Migration';
 
 
 
