@@ -58,13 +58,49 @@ FROM employees_j as e
 LEFT JOIN departments_j as d ON e.dept_id = d.dept_id
 WHERE d.dept_name is null;
 
+/*
+Challenge #4 (RIGHT JOIN)
+Find: All departments, Along with employee names. 👉 Include departments with no employees
+*/
+SELECT d.dept_name, e.emp_name FROM departments_j d LEFT JOIN employees_j e ON d.dept_id = e.dept_id;
+
+/* 
+Challenge #5 (FULL JOIN — Next Level)
+Find: All employees, All departments
+👉 Include: Unmatched employees, Unmatched departments
+*/
+
+SELECT e.emp_name, d.dept_name
+FROM employees_j e LEFT JOIN departments_j d  ON e.dept_id = d.dept_id
+UNION
+SELECT e.emp_name, d.dept_name
+FROM employees_j e RIGHT JOIN departments_j d  ON e.dept_id = d.dept_id WHERE e.emp_id IS NULL;
+
+/*
+Challenge #6 (LEFT ANTI JOIN — Formalizing Pattern)
+Find: Departments that do NOT have any employees
+Return - dept_name
+*/
+SELECT d.dept_name FROM departments_j d
+LEFT JOIN employees_j e  ON d.dept_id = e.dept_id WHERE e.emp_id IS NULL;
+
+/*
+Challenge #7 (RIGHT ANTI JOIN — Reverse)
+Find: 👉 Employees who do NOT belong to any valid department
+*/
+SELECT e.* FROM employees_j e
+LEFT JOIN departments_j d  ON d.dept_id = e.dept_id WHERE d.dept_id IS NULL;
 
 
-
-
-
-
-
+/*
+Challenge #8 (FULL ANTI JOIN — Rare but Powerful)
+Find: 👉 All records that do NOT have a match on either side
+*/
+SELECT e.emp_name, d.dept_name FROM employees_j e
+LEFT JOIN departments_j d ON e.dept_id = d.dept_id WHERE d.dept_id IS NULL
+UNION
+SELECT e.emp_name, d.dept_name FROM departments_j d
+LEFT JOIN employees_j e ON e.dept_id = d.dept_id WHERE e.emp_id IS NULL;
 
 
 

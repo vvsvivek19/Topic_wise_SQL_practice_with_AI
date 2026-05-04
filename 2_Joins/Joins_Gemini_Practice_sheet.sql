@@ -96,8 +96,79 @@ SELECT *
 FROM employees_joins CROSS JOIN trainingmodules
 ORDER BY FirstName, ModuleID;
 
+/*
+Challenge #5 (Joins): The Self-Referential Connection (Self Join)
+Retrieve the FirstName of each employee along with the FirstName of their Manager.
+Requirement: Name the columns EmployeeName and ManagerName.
+Requirement: Only include employees who actually have a manager assigned (exclude the "Big Boss" who has a NULL ManagerID).
+*/
+-- Step 1: Add the ManagerID column
+-- ALTER TABLE employees_ins ADD COLUMN ManagerID INT;
+
+-- Step 2: Assign managers (Alice reports to Bob, Diana reports to Alice, etc.)
+-- UPDATE employees_joins SET ManagerID = 2 WHERE EmployeeID IN (1, 3, 6, 7, 14);
+-- UPDATE employees_joins SET ManagerID = 1 WHERE EmployeeID IN (4, 8);
+-- UPDATE employees_joins SET ManagerID = 9 WHERE EmployeeID IN (12, 13);
+-- Note: Bob (EmployeeID 2) remains as the top-level manager with NULL ManagerID.
+
+SELECT j.FirstName as EmployeeName, e.FirstName as ManagerName FROM employees_joins e
+JOIN employees_joins j ON e.EmployeeID = j.ManagerID;
+
+/*
+Challenge #6 (Joins): Multi-Table Aggregation
+Find each DeptName and the total number of employees assigned to it.
+Requirement: Include all departments in the results, even if they have zero employees.
+Requirement: Sort the final list by the number of employees from highest to lowest.
+*/
+SELECT d.DeptName, COUNT(e.EmployeeID) as total_employees FROM 
+department_joins d 
+LEFT JOIN employees_joins e ON d.DeptID = e.DeptID
+GROUP BY d.DeptName
+ORDER BY COUNT(e.EmployeeID) DESC;
 
 
+/*
+Challenge #7 (Joins): The "Mutual Misfits" (Full Anti-Join)
+Identify all "mismatches" in the system. Retrieve the FirstName, LastName, and DeptName for:
+	- Every employee who is not assigned to any department.
+	- Every department that has no employees assigned to it.
+Requirement: Since you are in a MySQL environment, you cannot use a FULL OUTER JOIN directly. You must simulate this "Full Anti-Join" by combining two sets using UNION.
+*/
+SELECT e.FirstName,e.LastName,d.DeptName FROM employees_joins e
+LEFT JOIN department_joins d ON e.DeptID = d.DeptID WHERE d.DeptID IS NULL
+UNION
+SELECT e.FirstName,e.LastName,d.DeptName FROM department_joins d
+LEFT JOIN employees_joins e ON e.DeptID = d.DeptID WHERE e.EmployeeID IS NULL;
+
+
+/*
+Challenge #8 (Joins): The Triple Connection
+Retrieve a list of all employees who are working on the 'Cloud Migration' project.
+Requirements: Include the FirstName, LastName, DeptName, and ProjectName.
+Constraint: Only show employees who are actually assigned to that specific project.
+*/
+
+-- CREATE TABLE Projects (
+--     ProjectID INT PRIMARY KEY,
+--     ProjectName VARCHAR(100)
+-- );
+
+-- CREATE TABLE Employee_Projects (
+--     EmployeeID INT,
+--     ProjectID INT,
+--     PRIMARY KEY (EmployeeID, ProjectID)
+-- );
+
+-- INSERT INTO Projects (ProjectID, ProjectName) VALUES
+-- (501, 'Cloud Migration'),
+-- (502, 'Security Audit');
+
+-- INSERT INTO Employee_Projects (EmployeeID, ProjectID) VALUES
+-- (2, 501), (6, 501), (9, 502), (14, 501);
+SELECT e.FirstName, e.LastName, d.DeptName, p.ProjectName FROM employees_joins e
+JOIN employee_projects ep ON e.EmployeeID = ep.EmployeeID
+JOIN department_joins d ON d.DeptID = e.DeptID
+JOIN projects p ON p.ProjectID = ep.ProjectID;
 
 
 
