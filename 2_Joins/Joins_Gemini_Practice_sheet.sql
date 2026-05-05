@@ -171,7 +171,66 @@ JOIN department_joins d ON d.DeptID = e.DeptID
 JOIN projects p ON p.ProjectID = ep.ProjectID
 WHERE p.ProjectName = 'Cloud Migration';
 
+/*
+Challenge #9 (Joins): Multi-Table Summary with Gaps
+Find the ProjectName and the Total Salary spent on each project.
+Requirement: Include all projects in the results, even if no employees are currently assigned to them.
+Requirement: For projects with no employees, the total salary should show as 0 (or NULL).
+Requirement: Sort the final results from the highest total salary to the lowest.
+*/
+-- Adding new projects, including those with NO employees
+-- INSERT INTO Projects (ProjectID, ProjectName) VALUES
+-- (503, 'AI Implementation'),
+-- (504, 'Website Redesign'),
+-- (505, 'Data Warehouse');
 
+-- Adding assignments for the new 'Data Warehouse' project
+-- INSERT INTO Employee_Projects (EmployeeID, ProjectID) VALUES
+-- (1, 505), 
+-- (3, 505);
+
+SELECT 
+ProjectName,
+CASE
+	WHEN total_spent is NULL THEN 0
+    ELSE total_spent
+END AS total_spent
+FROM
+(
+	SELECT p.ProjectName, SUM(e.Salary) as total_spent
+	FROM projects p LEFT JOIN employee_projects ep ON ep.ProjectID = p.ProjectID
+	LEFT JOIN employees_joins e ON ep.EmployeeID = e.EmployeeID
+	GROUP BY p.ProjectName
+)t;
+
+/*
+Challenge #10 (Joins): Combining Multiple Join Types
+SQL Task: Generate a comprehensive report for the Board of Directors: Retrieve the FirstName, LastName, DeptName, and ProjectName.
+Requirements:
+- Include all employees, even if they are not in a department or assigned to a project.
+- Exclude any records related to the 'Security Audit' project.
+- For employees without a project, display the ProjectName as 'No Project Assigned'.
+- Sort the results by DeptName (A-Z) and then by LastName (A-Z).
+*/
+SELECT * fROM projects;
+SELECT * FROM employee_projects;
+SELECT * from employees_joins;
+SELECT * FROM department_joins;
+
+SELECT FirstName, LastName, 
+	CASE WHEN DeptName is NULL THEN 'No Dept Assigned'
+    ELSE DeptName END AS DeptName, 
+	CASE WHEN ProjectName is NULL THEN 'No Project Assigned'
+    ELSE ProjectName END AS ProjectName
+FROM
+(
+SELECT e.FirstName,e.LastName,d.DeptName,p.ProjectName FROM
+employees_joins e LEFT JOIN department_joins d ON e.DeptID = d.DeptID
+LEFT JOIN employee_projects ep ON e.EmployeeID = ep.EmployeeID
+LEFT JOIN projects p ON ep.ProjectID = p.ProjectID
+WHERE p.ProjectName != 'Security Audit' OR p.ProjectName IS null
+)t
+ORDER BY DeptName, LastName;
 
 
 

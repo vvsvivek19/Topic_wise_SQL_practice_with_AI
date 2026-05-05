@@ -102,6 +102,13 @@ UNION
 SELECT e.emp_name, d.dept_name FROM departments_j d
 LEFT JOIN employees_j e ON e.dept_id = d.dept_id WHERE e.emp_id IS NULL;
 
+/*
+Challenge #9 (CROSS JOIN — Final Type)
+Generate All possible combinations of: Employees, Departments
+*/
+SELECT emp_name, dept_name FROM employees_j
+CROSS JOIN departments_j;
+
 
 
 
