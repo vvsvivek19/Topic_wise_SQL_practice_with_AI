@@ -37,3 +37,38 @@ Requirement 3: Include every single record from both tables, even if the same pe
 SELECT FirstName, LastName, 'Internal' as ContactType FROM employees_joins
 UNION ALL
 SELECT FirstName, LastName, 'External' as ContactType FROM external_partners;
+
+/*
+Challenge #3 (Set Operators): Finding Commonality
+Identify the FirstName and LastName of people who are both permanent employees and external partners.
+Requirement: Use the INTERSECT operator (available in MySQL 8.0.31+) to find only the "Intersection" between the two tables.
+*/
+SELECT FirstName, LastName FROM employees_joins
+INTERSECT
+SELECT FirstName, LastName FROM external_partners;
+
+/*
+Challenge #4 (Set Operators): Finding the Difference
+Identify the FirstName and LastName of people who are permanent employees but are NOT listed as external partners.
+Requirement: Use the EXCEPT operator to find the "Difference" between the two sets.
+*/
+SELECT FirstName, LastName FROM employees_joins
+EXCEPT
+SELECT FirstName, LastName FROM external_partners;
+
+/*
+Challenge #5 (Set Operators): Set Operations with Complex Filtering
+Now that you've mastered the basic set operators, let's combine them with filtering and multiple logic layers.
+- Generate a list of FirstName and LastName for the following group:
+- All Permanent Employees who work in the 'Engineering' department.
+- EXCEPT for any individuals who are also External Partners.
+- UNION the result with all External Partners who work for the company 'CloudTech'.
+*/
+
+
+
+
+
+
+
+
