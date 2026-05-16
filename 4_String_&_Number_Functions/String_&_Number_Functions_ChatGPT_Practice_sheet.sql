@@ -25,8 +25,62 @@ Requirements:
 */
 SELECT concat(UPPER(TRIM(emp_name)), ' - ', UPPER(TRIM(department))) as formatted_employee FROM employees_func;
 
+/*
+Challenge #2 (REPLACE + LOWER)
+Create cleaned email IDs in this format:
+amit@company.com
+neha@company.com
+Requirements: Use employee names, Convert to lowercase, Remove spaces from names
+Append: @company.com
+*/
+
+SELECT 
+	CONCAT(lower(TRIM(emp_name)),'@company.com') as clean_email
+FROM employees_func;
+
+/*
+Challenge #3 (LEFT + RIGHT + LEN)
+Generate employee codes in this format: AMI_75, NEH_40
+Rules: First 3 letters of employee name (uppercase), _ , Last 2 digits of salary (without decimal)
+*/
+SELECT * FROM employees_func;
+SELECT CONCAT(UPPER(LEFT(TRIM(emp_name),3)),'_',RIGHT(CAST(salary as unsigned),2)) as emp_code
+FROM employees_func;
+
+/*
+Challenge #4 (SUBSTRING + REPLACE)
+Create masked employee names in this format: a***t, n***a
+Rules:
+Keep: first character, last character
+Replace all middle characters with: ***
+*/
+SELECT * FROM employees_func;
+SELECT concat(LOWER(LEFT(TRIM(emp_name),1)),'***',LOWER(RIGHT(TRIM(emp_name),1))) as masked_emp
+FROM employees_func;
+
+/*
+Challenge #5 (ROUND + ABS)
+Show: Salary difference from 60000
+Rules:
+Difference should always be positive
+Round result to nearest whole number
+*/
+SELECT 
+    emp_name,
+    ROUND(ABS(salary - 60000)) AS salary_difference
+FROM employees_func;
 
 
+/*
+Challenge #6 (Mixed String Functions — Real Data Cleaning)
+Generate usernames in this format:
+amit_it
+neha_hr
+Rules: employee name: lowercase, remove spaces, department: lowercase, combine with _
+*/
+SELECT 
+	CONCAT(LOWER(TRIM(emp_name)),'_',LOWER(TRIM(department)))
+FROM employees_func;
 
 
 
