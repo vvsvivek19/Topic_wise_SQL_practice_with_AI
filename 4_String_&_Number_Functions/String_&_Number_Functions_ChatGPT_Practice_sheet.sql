@@ -82,7 +82,33 @@ SELECT
 	CONCAT(LOWER(TRIM(emp_name)),'_',LOWER(TRIM(department)))
 FROM employees_func;
 
+/*
+Challenge #7 (LEN + SUBSTRING)
+Show:
+Employee name
+Length of employee name (excluding outer spaces)
+Middle 2 characters from employee name
+*/
+SELECT
+	TRIM(emp_name) AS emp_name,
+    LENGTH(TRIM(emp_name)) AS name_length,
+	CASE
+		WHEN length(TRIM(emp_name)) % 2 = 0 THEN substring(TRIM(emp_name),length(TRIM(emp_name)) / 2,2 )
+        WHEN length(TRIM(emp_name)) % 2 != 0 THEN substring(TRIM(emp_name),ROUND(length(TRIM(emp_name)) / 2,0),2 )
+	END as middle_2
+FROM employees_func;
 
+
+/*
+Challenge #8 (REPLACE + SUBSTRING + CONCAT)
+Mask salary values in this format: 60XXX, 50XXX
+Rules: Keep first 2 digits of salary
+Replace remaining digits with: XXX
+*/
+SELECT 
+	TRIM(emp_name),
+	CONCAT(substring(CAST(salary as char),1,2),'XXX') as masked_Salary
+FROM employees_func;
 
 
 

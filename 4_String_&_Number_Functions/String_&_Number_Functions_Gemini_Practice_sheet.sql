@@ -95,11 +95,6 @@ JOIN employee_projects ep ON e.EmployeeID = ep.EmployeeID
 JOIN projects p ON ep.ProjectID = p.ProjectID)t
 WHERE Budget_Variance <= 25000;
 
-SELECT 
-	*
-FROM employees_joins e
-JOIN employee_projects ep ON e.EmployeeID = ep.EmployeeID
-JOIN projects p ON ep.ProjectID = p.ProjectID;
 
 /*
 Challenge #6 (String & Number Functions): Advanced Data Redaction & Swapping
@@ -109,6 +104,125 @@ Redacted Code (Redacted_Code): Take the Staff_Code computed in the previous chal
 Normalized Variance (Normalized_Variance): Take the absolute budget variance (ABS(85000 - Salary)) and divide it by the maximum possible variance threshold of 50,000. ROUND this final decimal ratio to exactly 3 decimal places.
 Filter Criteria: Only display active project allocations where the employee's Salary is strictly less than 85,000.
 */
+
+SELECT 
+	REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Staff_Code,'a','*'),'i','*'),'o','*'),'e','*'),'u','*'),'A','*'),'I','*'),'O','*'),'E','*'),'U','*') as Redacted_Code,
+    ROUND(Budget_Variance/50000,3) as Normalized_Variance
+ FROM
+	(SELECT 
+		CASE 
+			WHEN length(TRIM(e.FirstName)) > length(TRIM(e.LastName)) THEN Lower(LEFT(TRIM(e.FirstName),3))
+			WHEN length(TRIM(e.FirstName)) <= length(TRIM(e.LastName)) THEN UPPER(RIGHT(TRIM(e.LastName),3)) 
+		END as Staff_Code,
+		ABS(85000 - e.Salary) as Budget_Variance
+	FROM employees_joins e
+	JOIN employee_projects ep ON e.EmployeeID = ep.EmployeeID
+	JOIN projects p ON ep.ProjectID = p.ProjectID
+    WHERE e.Salary < 85000)t
+WHERE Budget_Variance <= 25000;
+
+SELECT 
+	*
+FROM employees_joins e
+JOIN employee_projects ep ON e.EmployeeID = ep.EmployeeID
+JOIN projects p ON ep.ProjectID = p.ProjectID;
+
+/*
+Challenge #7 (String & Number Functions): Character Symmetry & Negative Rounding
+Let's test an advanced number trick alongside deep positional extractions.
+The Communications team wants an executive roster audit:
+- Name Symmetry (Is_Symmetric): Evaluate the trimmed length of the FirstName. If the number of characters is even, return the text string 'Even'. If it is odd, return 'Odd'. (Hint: Use the modulo operator % or MOD()).
+- Core Extraction (Core_Letters): Extract a specific middle piece of their text:
+- If the trimmed FirstName length is strictly greater than 4, extract a 3-character substring starting exactly from character position 2.
+- If it is 4 characters or fewer, return the full FirstName in all lowercase.
+- Financial Cluster (Salary_Cluster): Group salaries into high-level tranches. Round the employee's Salary to the nearest 10,000. (Hint: Look into how a negative second argument in the ROUND() function behaves!)
+- Filter Criteria: Only include employees whose trimmed FirstName length is strictly greater than 3.
+*/
+
+SELECT 
+	CASE
+		WHEN length(TRIM(FirstName))%2 = 0 THEN 'Even'
+        WHEN length(TRIM(FirstName))%2 != 0 THEN 'Odd'
+	END as Is_Symmetric,
+    CASE
+		WHEN length(TRIM(FirstName)) > 4 THEN substring(TRIM(FirstName),2,3)
+        WHEN length(TRIM(FirstName)) <= 4 THEN Lower(TRIM(FirstName))
+	END as Core_Letters,
+    ROUND(Salary,-4) as Salary_Cluster
+FROM employees_joins
+WHERE length(TRIM(FirstName))>3;
+
+/*
+
+*/
+-- If you already created the table, you can just run the INSERTs below.
+-- Otherwise, here is the full script:
+
+-- CREATE TABLE external_audit_clean (
+--     FirstName VARCHAR(50),
+--     LastName VARCHAR(50),
+--     Corporate_Email VARCHAR(100),
+--     Salary INT
+-- );
+
+-- INSERT INTO external_audit_clean VALUES 
+-- ('Bruce', 'Wayne', 'bwayne@gothamtech.org', 115000),
+-- ('Clark', 'Kent', 'ckent@metrodaily.com', 52000),
+-- ('Diana', 'Prince', 'dprince@amazoncorp.net', 94000),
+-- ('Barry', 'Allen', 'ballen@centralpd.gov', 68000),
+-- ('Hal', 'Jordan', 'hjordan@ferrisair.com', 82000),
+-- ('Arthur', 'Curry', 'acurry@atlantiscorp.gov', 145000),
+-- ('Lois', 'Lane', 'llane@metrodaily.com', 76000),
+-- ('Selina', 'Kyle', 'skyle@catburglar.net', 48000),
+-- ('Lex', 'Luthor', 'lluthor@lexcorp.com', 350000);
+
+SELECT * FROM external_audit_clean;
+
+SELECT 
+	UPPER(LEFT(TRIM(Corporate_Email),LOCATE('@', TRIM(Corporate_Email))-1)) as User_Name,
+    length(SUBSTRING(TRIM(Corporate_Email),LOCATE('@', TRIM(Corporate_Email))+1))as Domain_Len,
+    Salary - 75000 as Signed_Deviation
+FROM external_audit_clean;
+
+/*
+Challenge #9 (String & Number Functions): Fixed-Width Ledger Formatting
+Let's look at how text and numeric padding functions are used to generate standardized flat files, system logs, or fixed-width accounting ledger data.
+The IT Auditing team needs a stylized, fixed-width report string to feed into a legacy reporting system. Generate a single column named Ledger_Record that formats the data into a single line matching this exact structure:
+- Begin with the User_Name (everything before the @ symbol in uppercase, using your logic from the last challenge).
+- This username must be Right-Padded with periods ('.') so that it occupies a fixed space of exactly 15 characters (e.g., 'BWAYNE.........').
+- Append a static separator string: ' -> '.
+- Append the Signed_Deviation value (Salary - 75000).
+- This deviation value must be converted to text and Left-Padded with zeros ('0') so that it occupies a fixed space of exactly 7 characters (including its negative sign if present, e.g., '0040000' or '-023000').
+
+Final Output Example: BWAYNE......... -> 0040000 or CKENT.......... -> -023000
+*/
+
+
+/*
+Challenge #10 (String & Number Functions): The Grand Finale 🏁Let's close out this chapter with a master challenge that combines string slicing, domain categorization, and macro-financial scaling using our updated DC universe dataset!
+The Justice League Oversight Committee requires a high-level "Risk and Contribution Matrix":
+- Hero_Initials: Combine the first letter of their FirstName and the first letter of their LastName in uppercase, separated by a hyphen (e.g., Bruce Wayne becomes 'B-W').
+- Salary_Scale: Round their Salary to the nearest 100,000 using negative rounding scale math.
+- Email_Safety_Check: Analyze the domain extension of their Corporate_Email:If the email ends in '.gov', label it as 'Secure Gov'.If it ends in '.com' or '.org', label it as 'Standard Corporate'.For any other extension (like '.net'), label it as 'Unsecured/Private'.
+- Filter Criteria: Only include heroes whose Salary is strictly greater than $50,000$ and whose LastName does not contain the letter 'e' (case-insensitive).
+*/
+SELECT 
+	UPPER(CONCAT(LEFT(TRIM(FirstName),1),'-',LEFT(TRIM(LastName),1))) as Hero_Initials,
+    ROUND(Salary,-5) as Salary_Scale,
+    CASE 
+		WHEN RIGHT(TRIM(Corporate_Email),4) = '.gov' THEN 'Secure Gov'
+        WHEN RIGHT(TRIM(Corporate_Email),4) = '.com' OR  RIGHT(TRIM(Corporate_Email),4) = '.org' THEN 'Standard Corporate'
+        ELSE 'Unsecured/Private'
+	END as Email_Safety_Check
+FROM external_audit_clean
+WHERE Salary > 50000 AND LastName Not Like '%e%';
+
+
+
+
+
+
+
 
 
 
