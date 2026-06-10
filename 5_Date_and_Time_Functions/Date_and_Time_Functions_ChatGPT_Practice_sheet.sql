@@ -161,3 +161,23 @@ SELECT
 FROM  employees_date
 )t
 WHERE days_until_review > 0 AND days_until_review < 20;
+
+/*
+🔥 Challenge #6 (Noticeably Harder)
+This one introduces DATEPART + aggregation + join-back-to-details, similar to the pattern you rediscovered earlier.
+SQL Task: Find employees who joined in the same quarter and year as at least one other employee.
+Rules:
+- Return employees belonging to quarters having 2 or more employees.
+- Return the employee rows, not just the quarter.
+*/
+
+--TRUNCATE TABLE employees_date;
+
+--INSERT INTO employees_date VALUES
+--(1, 'Amit',  '2023-01-10'),
+--(2, 'Neha',  '2023-03-20'),
+--(3, 'Raj',   '2023-04-15'),
+--(4, 'Sneha', '2023-05-05'),
+--(5, 'Karan', '2023-09-01'),
+--(6, 'Pooja', '2024-01-10');
+

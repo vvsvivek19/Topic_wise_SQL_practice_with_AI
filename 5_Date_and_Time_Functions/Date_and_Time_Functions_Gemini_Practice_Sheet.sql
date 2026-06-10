@@ -125,3 +125,28 @@ SELECT
 	CONVERT(varchar,DATEADD(DAY,90,DeploymentDate),101) as Probation_End_Date,
 	DATEDIFF(DAY,DeploymentDate,DATEFROMPARTS(YEAR(DeploymentDate),12,31)) as Active_Days_In_Deployment_Year
 FROM mcu_avengers_roster
+
+/*
+Challenge #6 (Date & Time Functions): Precision Time Slicing & Operational Shifts
+Let's expand your toolkit to handle exact hours, minutes, and time-of-day classification matrices.
+SQL Task: The Avengers Global Tactical Command tracks incidents down to the precise millisecond. They need an operational shift monitoring report:
+- Local_Wakanda_Time: The mission logs are stored globally in UTC. The Wakanda base operates exactly 2 hours ahead of UTC. Calculate the local Wakanda timestamp for each mission using your calculation functions.
+- Clean_Time_Only: Extract just the Time portion (Hour:Minute:Second) from the computed Local_Wakanda_Time, dropping the calendar date entirely.
+- Operational_Shift: Evaluate the hour of the calculated Local_Wakanda_Time and bucket it into one of three tactical shifts:
+	- Hours from 06:00:00 up to 11:59:59 $\rightarrow$ 'Morning Ops'
+	- Hours from 12:00:00 up to 17:59:59 $\rightarrow$ 'Afternoon Ops'
+	- Any other hour $\rightarrow$ 'Night Ops'
+*/
+
+--CREATE TABLE mcu_mission_logs (
+--    MissionID INT PRIMARY KEY,
+--    TargetCode VARCHAR(50),
+--    UTCTimestamp DATETIME2
+--);
+
+--INSERT INTO mcu_mission_logs VALUES 
+--(101, 'Hydra Labs', '2015-04-22 04:15:30.000'),
+--(102, 'Sokovia Evac', '2015-05-01 11:45:00.000'),
+--(103, 'Lagos Intercept', '2016-04-28 15:20:12.500'),
+--(104, 'Titan Ambush', '2018-04-27 21:05:00.000'),
+--(105, 'Endgame Portal', '2023-10-23 13:00:00.000');
