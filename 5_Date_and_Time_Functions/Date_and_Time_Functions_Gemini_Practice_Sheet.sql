@@ -133,9 +133,9 @@ SQL Task: The Avengers Global Tactical Command tracks incidents down to the prec
 - Local_Wakanda_Time: The mission logs are stored globally in UTC. The Wakanda base operates exactly 2 hours ahead of UTC. Calculate the local Wakanda timestamp for each mission using your calculation functions.
 - Clean_Time_Only: Extract just the Time portion (Hour:Minute:Second) from the computed Local_Wakanda_Time, dropping the calendar date entirely.
 - Operational_Shift: Evaluate the hour of the calculated Local_Wakanda_Time and bucket it into one of three tactical shifts:
-	- Hours from 06:00:00 up to 11:59:59 $\rightarrow$ 'Morning Ops'
-	- Hours from 12:00:00 up to 17:59:59 $\rightarrow$ 'Afternoon Ops'
-	- Any other hour $\rightarrow$ 'Night Ops'
+	- Hours from 06:00:00 up to 11:59:59 - 'Morning Ops'
+	- Hours from 12:00:00 up to 17:59:59 - 'Afternoon Ops'
+	- Any other hour - 'Night Ops'
 */
 
 --CREATE TABLE mcu_mission_logs (
@@ -150,3 +150,172 @@ SQL Task: The Avengers Global Tactical Command tracks incidents down to the prec
 --(103, 'Lagos Intercept', '2016-04-28 15:20:12.500'),
 --(104, 'Titan Ambush', '2018-04-27 21:05:00.000'),
 --(105, 'Endgame Portal', '2023-10-23 13:00:00.000');
+
+SELECT 
+	*,
+	CASE 
+		WHEN Clean_Time_Only BETWEEN '06:00:00' AND '11:59:59' THEN 'Morning Ops'
+		WHEN Clean_Time_Only BETWEEN '12:00:00' AND '17:59:59' THEN 'Afternoon Ops'
+		ELSE 'Night Ops'
+	END AS Operational_Shift
+FROM
+(
+SELECT 
+	*,
+	DATEADD(HOUR,2,UTCTimestamp) as Local_Wakanda_Time,
+	CAST(DATEADD(HOUR,2,UTCTimestamp) AS TIME) as Clean_Time_Only
+FROM mcu_mission_logs)t;
+
+/*
+Challenge #7 (Date & Time Functions): Temporal Aggregations & Activity Trends
+Let's merge your date extraction skills with advanced group level analysis—a combination frequently featured in technical assessments.
+SQL Task: The New Asgard Bureau of Analytics wants to evaluate patterns in global threat incidents to optimize patrol schedules:
+	- Day_Name: Extract the full text name of the day of the week the incident occurred ('Monday', 'Tuesday').	
+	- Incident_Count: Count the total number of incidents handled on that specific day of the week.
+	- Avg_Severity_Score: Calculate the average threat scale score for that day, rounded to 1 decimal place.
+	- Ordering: Order the final summary report so that the day with the highest number of incidents appears first.
+*/
+--CREATE TABLE global_threat_incidents (
+--    IncidentID INT PRIMARY KEY,
+--    ThreatType VARCHAR(50),
+--    IncidentTimestamp DATETIME2,
+--    SeverityScale INT
+--);
+
+--INSERT INTO global_threat_incidents VALUES 
+--(1, 'Alien Incursion', '2026-06-01 08:15:00', 8),  -- Monday
+--(2, 'Ultron Remnant', '2026-06-01 14:30:00', 6),   -- Monday
+--(3, 'Sorcery Anomaly', '2026-06-02 23:10:00', 9),  -- Tuesday
+--(4, 'Alien Incursion', '2026-06-03 11:00:00', 7),  -- Wednesday
+--(5, 'Hydra Cell Ops', '2026-06-05 19:45:00', 4),   -- Friday
+--(6, 'Ultron Remnant', '2026-06-05 02:15:00', 5),   -- Friday
+--(7, 'Sorcery Anomaly', '2026-06-05 13:00:00', 8);  -- Friday
+
+SELECT
+	Day_name,
+	COUNT(Day_Name) as Incident_Count,
+	ROUND(AVG(CAST(SeverityScale AS DECIMAL(3,1))), 1) as Avg_Severity_Score
+FROM
+(SELECT 
+	*,
+	DATENAME(WEEKDAY,IncidentTimestamp) as Day_Name
+FROM global_threat_incidents)t
+GROUP BY Day_Name
+ORDER BY Incident_Count DESC;
+
+/*
+Challenge #8 (Date & Time Functions): Operational SLAs & Containment Latency
+Let's step up the complexity by testing your ability to handle multiple precise time parameters (DATETIME2), compute time deltas down to the minute, and evaluate strict Service Level Agreements (SLAs).
+SQL Task: The S.H.I.E.L.D. Global Command Center tracks response performance using an elite "Threat Containment Service Level Agreement". Write a report that calculates the following:
+- Response_Minutes: Calculate the exact number of minutes it took to contain the threat after it was first detected (DATEDIFF between DetectionTimestamp and ContainmentTimestamp).
+- Target_SLA_Time: Programmatically calculate the maximum allowable containment deadline by adding exactly 45 minutes to the DetectionTimestamp via your calculation functions.
+- SLA_Status: Using a conditional CASE statement, compare the actual ContainmentTimestamp to your calculated Target_SLA_Time
+	-If containment occurred after the deadline, label it 'SLA Breached'.
+	- If it was completed on or before the deadline, label it 'SLA Met'.
+- Filter Criteria: Ensure maximum index optimization (SARGability) by filtering for threats that were detected strictly during the month of June 2026. (Do not wrap your column in any extraction functions inside the WHERE clause!).
+*/
+
+--CREATE TABLE shield_sla_audit (
+--    IncidentID INT PRIMARY KEY,
+--    ThreatCodename VARCHAR(50),
+--    DetectionTimestamp DATETIME2,
+--    ContainmentTimestamp DATETIME2
+--);
+
+--INSERT INTO shield_sla_audit VALUES 
+--(1, 'Winter Soldier', '2026-06-01 08:00:00.000', '2026-06-01 08:35:12.000'), -- 35 mins (Met)
+--(2, 'Abomination Rampage', '2026-06-01 14:15:00.000', '2026-06-01 15:10:00.000'), -- 55 mins (Breached)
+--(3, 'Mystic Rift', '2026-06-15 23:30:00.000', '2026-06-16 00:12:45.000'), -- 42 mins (Met)
+--(4, 'Whiplash Malfunction', '2026-06-30 11:00:00.000', '2026-06-30 12:05:00.000'), -- 65 mins (Breached)
+--(5, 'Ultron Drone Skirmish', '2026-07-01 02:00:00.000', '2026-07-01 02:22:00.000'); -- July (Filter Out)
+
+SELECT
+	*,
+	CASE
+		WHEN ContainmentTimestamp > Target_SLA_Time THEN 'SLA Breached'
+		WHEN ContainmentTimestamp <= Target_SLA_Time THEN 'SLA Met'
+	END AS SLA_Status
+FROM
+(SELECT 
+	*,
+	DATEDIFF(MINUTE,DetectionTimestamp,ContainmentTimestamp) as Response_Minutes,
+	DATEADD(MINUTE,45,DetectionTimestamp) as Target_SLA_Time
+FROM shield_sla_audit
+WHERE DetectionTimestamp >= '2026-06-01' AND DetectionTimestamp < '2026-07-01')t;
+
+/*
+Challenge #9 (Date & Time Functions): Weekend SLA Postponement
+Let's test your ability to handle complex operational business shifts. In enterprise logistics and financial systems, if a deadline lands on a weekend, it must dynamically roll forward to the next open business day.
+SQL Task: The Stark Industries Logistics Core needs an advanced "Operational Briefing Tracker". Write a query that computes the following metrics for active supply chain missions:
+	- Day_Number: Extract the weekday integer of the ShipmentTimestamp (Assume standard US settings where 1 = Sunday and 7 = Saturday). (Use DATEPART).
+	- Standard_SLA_Deadline: Calculate a baseline deadline by adding exactly 24 hours to the ShipmentTimestamp. (Use DATEADD).
+	- Postponed_Briefing_Date: Stark compliance states that if a shipment goes out on a weekend, the briefing is delayed. Using a conditional CASE block:
+		- If Day_Number is 7 (Saturday), add exactly 2 days to the ShipmentTimestamp to roll it to Monday.
+		- If Day_Number is 1 (Sunday), add exactly 1 day to the ShipmentTimestamp to roll it to Monday.
+		- If it is a standard weekday (2 through 6), keep it at the Standard_SLA_Deadline calculated in requirement 2.
+	- Final_Report_String: Format that calculated Postponed_Briefing_Date into a clean text string displaying just the year, month name, and day number separated by spaces (e.g., '2026 June 15'). (Use CONCAT mixed with DATENAME and DATEPART parts).
+*/
+--CREATE TABLE stark_logistics_sla (
+--    ShipmentID INT PRIMARY KEY,
+--    CargoType VARCHAR(50),
+--    ShipmentTimestamp DATETIME2
+--);
+
+--INSERT INTO stark_logistics_sla VALUES 
+--(501, 'Vibranium Alloys', '2026-06-04 10:00:00'), -- Thursday (Weekday)
+--(502, 'Arc Reactor Cores', '2026-06-06 14:30:00'), -- Saturday (Weekend! Push to Monday)
+--(503, 'Nanotech Mesh', '2026-06-07 08:15:00'),    -- Sunday (Weekend! Push to Monday)
+--(504, 'Drones Chassis', '2026-06-08 16:00:00');    -- Monday (Weekday)
+
+SELECT
+	*,
+	CONCAT(DATENAME(YEAR,Postponed_Briefing_Date),' ',DATENAME(MONTH,Postponed_Briefing_Date), ' ',DATENAME(DAY,Postponed_Briefing_Date)) as Final_Report_String
+FROM
+(
+	SELECT 
+	*,
+	DATEPART(WEEKDAY,ShipmentTimestamp) as Day_Number,
+	DATEADD(HOUR,24,ShipmentTimestamp) as Standard_SLA_Deadline,
+	CASE
+		WHEN DATEPART(WEEKDAY,ShipmentTimestamp) = 7 THEN DATEADD(DAY,2,ShipmentTimestamp)
+		WHEN DATEPART(WEEKDAY,ShipmentTimestamp) = 1 THEN DATEADD(DAY,1,ShipmentTimestamp)
+		ELSE DATEADD(HOUR,24,ShipmentTimestamp) 
+	END AS Postponed_Briefing_Date
+	FROM stark_logistics_sla
+)t;
+
+/*
+⏳ Challenge #10: The Ultimate Time-Zone Finale
+Let's close this chapter out in style. Here is Challenge #10 again so you have it right in front of you. Solve this, and we will pack up your SQL Server sandbox and head right back to MySQL!
+SQL Task: The Time Variance Authority (TVA) monitors temporal discrepancies across multiple target realities. Help them assemble a master reality synchronization ledger:
+	- Timeline_UTC: Convert the raw naive BranchTimestamp into a true, global UTC Time Zone Offset (+00:00) line. (Hint: Look into the TODATETIMEOFFSET(date, offset) function).
+	- Asgard_Local_Time: Asgard's chronometers run exactly +05 hours and 30 minutes ahead of UTC. Take your computed Timeline_UTC timestamp and dynamically convert it to show the local Asgard target clock. (Hint: Look into SWITCHOFFSET(datetimeoffset, new_offset)).
+	- Truncated_Asgard_Hour: Clean up the calculated Asgard_Local_Time line by truncating it down to the absolute beginning of that hour (dropping trailing minutes, seconds, and milliseconds cleanly).
+	- Paradox_Flag: If the Truncated_Asgard_Hour occurs strictly between 12:00:00 (Noon) and 16:00:00 (4 PM) local time inclusive, label the event 'High Risk Window'. For any other time windows, label it 'Monitored Flow'.
+*/
+--CREATE TABLE tva_nexus_branches (
+--    BranchID INT PRIMARY KEY,
+--    TimelineVariant VARCHAR(50),
+--    BranchTimestamp DATETIME2
+--);
+
+--INSERT INTO tva_nexus_branches VALUES 
+--(901, 'Earth-616 Variant', '2026-06-15 08:15:00.000'),
+--(902, 'Loki Prime Branch', '2026-06-15 10:45:30.500'),
+--(903, 'Sacred Timeline Delta', '2026-06-15 22:00:00.000');
+SELECT
+	*,
+	CASE
+		WHEN  CAST(Truncated_Asgard_Hour AS TIME) BETWEEN '12:00:00' AND '16:00:00' THEN 'High Risk Window'
+		ELSE 'Monitored Flow'
+	END AS Paradox_Flag
+FROM 
+(
+	
+SELECT 
+	* ,
+	TODATETIMEOFFSET(BranchTimestamp,'+00:00') as Timeline_UTC,
+	SWITCHOFFSET(TODATETIMEOFFSET(BranchTimestamp,'+00:00'),'+05:30') as Asgard_Local_Time,
+	DATETRUNC(HOUR,SWITCHOFFSET(TODATETIMEOFFSET(BranchTimestamp,'+00:00'),'+05:30'))  as Truncated_Asgard_Hour
+FROM tva_nexus_branches
+)t;
