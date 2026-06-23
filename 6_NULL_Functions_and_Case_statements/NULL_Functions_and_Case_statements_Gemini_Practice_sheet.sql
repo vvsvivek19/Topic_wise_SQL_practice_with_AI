@@ -430,6 +430,79 @@ SELECT
 	END AS Sanitized_Apprehension_Status
 FROM dc_vigilante_audit;
 
+/*
+================================================================================
+1. SQL Task
+================================================================================
+
+The Watchtower Cyber-Security Core is monitoring containment cells across Arkham. 
+Build a single MySQL query that computes these high-alert metrics:
+
+-- True_Backup_Grid (Nested String Sanitization): 
+   Inspect the CellBlockBackup column. The incoming pipeline data is messy: 
+   some rows are true NULL, some are empty strings (''), others contain a lazy 
+   text string 'None', and others contain a lazy text string 'N/A'. 
+   - Use nested NULLIF() statements to convert all three variations ('', 'None', 
+     and 'N/A') into true database NULL states. 
+   - Wrap the expression in a function so that if the backup path is missing/NULL, 
+     it outputs the text: 'MANUAL ENFORCEMENT ONLY'.
+
+-- Lockdown_Threshold (Multi-Variable Defensive Math): 
+   Calculate an automated security load index using this formula: 
+   (CurrentInmates * SecurityLevelMultiplier). 
+   - If the SecurityLevelMultiplier is missing or NULL, assume a default baseline 
+     multiplier value of 1. 
+   - If the final calculated threshold is still a database NULL (because 
+     CurrentInmates is missing), default the entire column score to 0.
+
+-- Evacuation_Priority (Multi-Column Dependency Mapping): 
+   Use a searched CASE statement to assign tactical response profiles based on 
+   overlapping multi-column conditions:
+   - Condition 1: If the cell block is currently breached (IsBreached = 1), 
+                  label it 'ALPHA OVERRIDE IMMEDIATE' regardless of inmate 
+                  counts or backup grids.
+   - Condition 2: If the block has no active backup grid (meaning your cleaned 
+                  CellBlockBackup computation is NULL) AND CurrentInmates is 
+                  strictly greater than 50, label it 'CRITICAL RUNTIME EXPOSURE'.
+   - For any other scenario, label it 'Standard Security Routine'.
+*/
+
+DROP TABLE IF EXISTS dc_arkham_containment;
+
+CREATE TABLE dc_arkham_containment (
+    BlockID INT PRIMARY KEY,
+    BlockName VARCHAR(100),
+    CellBlockBackup VARCHAR(50), -- Contains NULLs, '', 'None', and 'N/A'
+    CurrentInmates INT,
+    SecurityLevelMultiplier INT,
+    IsBreached INT
+);
+
+INSERT INTO dc_arkham_containment VALUES 
+(1, 'Joker Isolation Vault', 'Grid-Omega', 1, 10, 0),
+(2, 'Freeze Cryo-Chamber', 'None', 12, NULL, 0),        -- 'None' string & NULL multiplier
+(3, 'Ivy Botanical Greenhouse', 'N/A', 65, 2, 0),       -- 'N/A' string & Inmates > 50 (Critical risk!)
+(4, 'Titan Experiment Lab', '', 45, 3, 1),              -- Empty string '' & Currently Breached!
+(5, 'Scarecrow Toxins Block', NULL, NULL, 4, 0);         -- True NULL inmates & True NULL backup
+
+SELECT * FROM dc_arkham_containment;
+SELECT
+	*,
+    CASE 
+		WHEN IsBreached = 1 THEN 'ALPHA OVERRIDE IMMEDIATE'
+        WHEN True_backup_Grid = 'MANUAL ENFORCEMENT ONLY' AND IFNULL(CurrentInmates,0) > 50 THEN 'CRITICAL RUNTIME EXPOSURE'
+        ELSE 'Standard Security Routine'
+	END AS Evacuation_Priority
+FROM
+(
+SELECT 
+	* ,
+    coalesce(NULLIF(NULLIF(NULLIF(TRIM(CellBlockBackup),'None'),'N/A'),''),'MANUAL ENFORCEMENT ONLY') as True_Backup_Grid,
+    IFNULL(CurrentInmates,0)*IFNULL(SecurityLevelMultiplier,1) as Lockdown_Threshold
+FROM dc_arkham_containment
+)t;
+
+
 
 
 
