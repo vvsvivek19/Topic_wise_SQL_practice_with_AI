@@ -235,9 +235,72 @@ SELECT
     SUM(salary) OVER(PARTITION BY department ORDER BY joining_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) running_department_salary
 FROM employees_wf;
 
+/*
+================================================================================
+🔥 Challenge #8 — Running Average
+================================================================================
 
+Now let's build directly on what you just learned.
 
+SQL Task:
+Return the following columns:
+- emp_name
+- department
+- joining_date
+- salary
+- running_avg_salary
 
+Rules:
+- Within each department
+- Ordered by joining date
+- Average salary up to the current employee
+*/
+
+SELECT 
+	emp_name,
+    department,
+    joining_date,
+    salary,
+    AVG(salary) OVER(PARTITION BY department ORDER BY joining_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as running_avg_salary
+FROM employees_wf;
+
+/*
+================================================================================
+🔥 Challenge #9 — Rolling 3-Employee Average
+================================================================================
+
+Unlike a running average:
+- Row 1 → Row 1
+- Row 2 → Rows 1-2
+- Row 3 → Rows 1-3
+- Row 4 → Rows 1-4
+
+A rolling average looks at a fixed-size moving window.
+
+Scenario:
+HR wants to smooth salary trends by averaging the salaries of:
+- Current employee
+- Previous employee
+- Employee before that
+
+Within the same department, ordered by joining date chronologically.
+
+SQL Task:
+Return the following columns:
+- emp_name
+- department
+- joining_date
+- salary
+- rolling_3_employee_avg
+*/
+
+SELECT
+	emp_name,
+    department,
+    joining_date,
+    salary,
+    AVG(salary) OVER(PARTITION BY department ORDER BY joining_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as rolling_3_employee_avg
+FROM employees_wf;
 
 
 

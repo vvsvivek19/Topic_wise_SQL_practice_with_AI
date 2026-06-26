@@ -365,9 +365,141 @@ SELECT
 FROM star_labs_accelerator_runs
 GROUP BY ExperimentDate;
 
+/*
+================================================================================
+Challenge #7 (Window Aggregates): Core Synthesis - Outlier Filtering via CTE Anchors
+================================================================================
 
+Let's combine your window aggregate skills with your newly unlocked CTE 
+architecture tool to solve a high-stakes data engineering task: Outlier Detection 
+and Data Cleansing.
 
+1. SQL Task
+The Watchtower Defense Grid is experiencing duplicate, faulty ping signals from 
+deep-space monitoring satellites. They need a clean data stream. Write a single 
+MySQL query using a Common Table Expression (CTE) that performs the following 
+processing cascade:
 
+-- The CTE Layer (Analyze & Flag): 
+   Scan the logs and compute these window metrics:
+   - Total_Ping_Count: For each row, count how many total times that specific 
+     SatelliteID has sent a ping with that exact same SignalHash.
+   - System_Average_Db: For each row, calculate the flat overall average 
+     SignalStrength_Db across the entire table as a system baseline.
+
+-- The Outer Layer (Filter & Project): 
+   Query your CTE to return a clean manifest matching these strict analytical 
+   parameters:
+   - Columns to Output: Return LogID, SatelliteID, SignalHash, and SignalStrength_Db.
+   - Filter Rule 1 (Deduplication): Exclude clone signatures. Only return records 
+     where the Total_Ping_Count is exactly 1.
+   - Filter Rule 2 (Outlier Detection): Exclude hardware degradation noise. 
+     Only return rows where the individual SignalStrength_Db is strictly greater 
+     than the calculated System_Average_Db.
+*/
+
+DROP TABLE IF EXISTS watchtower_satellite_pings;
+
+CREATE TABLE watchtower_satellite_pings (
+    LogID INT PRIMARY KEY,
+    SatelliteID VARCHAR(30),
+    SignalHash VARCHAR(50),
+    SignalStrength_Db INT
+);
+
+INSERT INTO watchtower_satellite_pings VALUES 
+(501, 'Sat-Alpha', 'HASH-99', 85),  -- Valid (Above system average, no duplicates)
+(502, 'Sat-Alpha', 'HASH-10', 40),  -- Dropped (Below system average)
+(503, 'Sat-Beta',  'HASH-22', 90),  -- Duplicate Signal 1! (Must be completely cleaned out)
+(504, 'Sat-Beta',  'HASH-22', 92),  -- Duplicate Signal 2! (Must be completely cleaned out)
+(505, 'Sat-Gamma', 'HASH-77', 95);  -- Valid (Above system average, no duplicates)
+
+SELECT * FROM watchtower_satellite_pings;
+
+WITH CTE_analysis AS
+(
+SELECT 
+	*,
+    COUNT(*) OVER(PARTITION BY SatelliteID,SignalHash) Total_Ping_Count,
+    AVG(SignalStrength_Db) OVER() System_Average_Db
+FROM watchtower_satellite_pings
+)
+SELECT
+	LogID, SatelliteID, SignalHash, SignalStrength_Db
+FROM CTE_analysis
+WHERE Total_Ping_Count = 1 and SignalStrength_Db > System_Average_Db;
+
+/*
+================================================================================
+🏆 Challenge #8: The Window Aggregate Capstone (The Metropolis Power Grid Crisis)
+================================================================================
+
+Let's do one final, comprehensive master challenge to completely lock down your 
+Window Aggregate Functions & Frames checklist before you sign off on this section! 
+This challenge combines multi-layer groupings, dynamic running accumulations, and 
+precise text mapping metrics inside MySQL.
+
+1. SQL Task
+Metropolis is experiencing a sudden power drain due to an external temporal threat. 
+The Daily Planet news desk is tracking emergency backup cells. Write a single 
+MySQL query using a CTE or Subquery that creates a master tactical grid showing 
+these specific metrics:
+
+-- Accumulated_Base_Drain (Running Total with Precise Sorting): 
+   For each unique row, calculate an accumulating, chronological running total of 
+   PowerDrain_MW for each SubstationName. The power must accumulate sequentially 
+   sorted by LogTime. Use an explicit, physical frame layout.
+
+-- Moving_Grid_Max (Rolling Outlier Tracking): 
+   Look closely at your substation timelines. Calculate a moving maximum power 
+   spike observed for each substation across a dynamic frame: include the current 
+   record and the immediate 2 preceding logs only. 
+   (Hint: Use ROWS BETWEEN 2 PRECEDING AND CURRENT ROW).
+
+-- Grid_Risk_Assessment (Conditional Logic on Frames): 
+   Use a searched CASE statement in your outer query to flag load thresholds:
+   - If the calculated Accumulated_Base_Drain crosses strictly above 1000.00 
+     -> 'CRITICAL LOAD EXCEEDED'
+   - If the row's individual PowerDrain_MW is exactly equal to its localized 
+     Moving_Grid_Max -> 'Active Surge Point'
+   - For any other row, output 'Stable Grid Flow'
+*/
+
+DROP TABLE IF EXISTS metropolis_power_logs;
+
+CREATE TABLE metropolis_power_logs (
+    LogID INT PRIMARY KEY,
+    SubstationName VARCHAR(50),
+    LogTime TIME,
+    PowerDrain_MW DECIMAL(12,2)
+);
+
+INSERT INTO metropolis_power_logs VALUES 
+(1, 'Sector-Gotham-Border', '20:00:00', 350.00),
+(2, 'Sector-Gotham-Border', '21:00:00', 450.00), -- Running Total = 800.00
+(3, 'Sector-Gotham-Border', '22:00:00', 300.00), -- Running Total = 1100.00 (Critical Exceeded!)
+(4, 'Sector-Downtown-Core', '20:00:00', 900.00), -- New Substation window partition!
+(5, 'Sector-Downtown-Core', '21:00:00', 200.00), -- Max of rows 4 & 5 is 900
+(6, 'Sector-Downtown-Core', '22:00:00', 950.00); -- Surge Point! (950 = Moving Max)
+
+SELECT * FROM metropolis_power_logs;
+
+WITH CTE_Master_tactical_grid
+AS(
+SELECT 
+	*,
+    SUM(PowerDrain_MW) OVER(PARTITION BY SubstationName ORDER BY LogTime ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as Accumulated_Base_Drain,
+    MAX(PowerDrain_MW) OVER(PARTITION BY SubstationName ORDER BY LogTime ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as Moving_Grid_Max
+FROM metropolis_power_logs)
+
+SELECT
+	*,
+    CASE 
+		WHEN Accumulated_Base_Drain > 1000.00 THEN 'CRITICAL LOAD EXCEEDED'
+        WHEN PowerDrain_MW = Moving_Grid_Max THEN 'Active Surge Point'
+        ELSE 'Stable Grid Flow'
+	END AS Grid_Risk_Assessment
+FROM CTE_Master_tactical_grid;
 
 
 
