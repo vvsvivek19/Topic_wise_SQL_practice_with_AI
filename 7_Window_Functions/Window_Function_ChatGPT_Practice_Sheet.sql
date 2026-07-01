@@ -302,8 +302,187 @@ SELECT
     AVG(salary) OVER(PARTITION BY department ORDER BY joining_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as rolling_3_employee_avg
 FROM employees_wf;
 
+/*
+================================================================================
+🚀 Challenge #1 (Ranking)
+================================================================================
 
+Using the same employees_wf table.
 
+SQL Task:
+Return the following columns using a ranking window function:
+- emp_name
+- department
+- salary
+- salary_rank
+
+Rules:
+- Highest salary in each department gets rank 1 (Descending Order).
+- Employees with the same salary should receive the same rank (Tie Handling).
+- The next rank should skip numbers if there is a tie (Standard Competition Rank).
+
+Example Scenario:
+If a department has salaries: [90000, 80000, 80000, 70000]
+The assigned ranks must be:  [1, 2, 2, 4]
+*/
+
+SELECT 
+	emp_name,
+    department, 
+    salary,
+    rank() OVER(PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees_wf;
+
+/*
+================================================================================
+🔥 Challenge #2
+================================================================================
+
+Using the same employees_wf table.
+
+SQL Task:
+Return the following columns using the appropriate dense ranking window function:
+- emp_name
+- department
+- salary
+- salary_rank
+
+Rules:
+- Highest salary in each department gets rank 1 (Descending Order).
+- Employees with the same salary receive the same rank (Tie Handling).
+- No ranks should be skipped after a tie (Consecutive/Dense Ranking).
+*/
+
+SELECT 
+    emp_name,
+    department,
+    salary,
+    DENSE_RANK() OVER(PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees_wf;
+
+/*
+================================================================================
+🔥 Challenge #3 (Slightly Harder)
+================================================================================
+
+Business Scenario:
+HR wants to identify only the highest-paid employee(s) in each department.
+If there is a tie, everyone tied for the highest salary should be returned.
+
+SQL Task:
+Return the following columns:
+- emp_name
+- department
+- salary
+
+Rules:
+- No rank column is required in the final output.
+*/
+
+SELECT
+	emp_name,
+    department,
+    salary
+FROM(
+SELECT
+	emp_name,
+    department,
+    salary,
+    DENSE_RANK() OVER(Partition by department ORDER BY salary DESC) as salary_rank
+FROM employees_wf
+)t
+WHERE salary_rank = 1;
+
+/*
+================================================================================
+🔥 Next Challenge (A Real Interview Favorite)
+================================================================================
+
+This is one of the most frequently asked window function questions.
+
+Business Scenario:
+The HR team accidentally imported duplicate employee records. 
+Two records are considered duplicates if they have the same:
+- department
+- salary
+
+Rule:
+- Keep only one record from each duplicate group.
+
+SQL Task:
+Return the following columns with duplicates removed:
+- emp_name
+- department
+- salary
+*/
+
+SELECT
+	*
+FROM (
+SELECT
+	emp_name,
+    department,
+    salary,
+    ROW_NUMBER() OVER(Partition by department, salary ORDER BY salary) as emp_rank
+FROM employees_wf
+)t
+WHERE emp_rank = 1;
+
+/*
+================================================================================
+🔥 Challenge #5
+================================================================================
+
+Using the same employees_wf table.
+
+SQL Task:
+Return the following columns to divide corporate compensation tiers:
+- emp_name
+- department
+- salary
+- salary_quartile
+
+Rules:
+- Employees should be ordered by salary descending.
+- Divide them into 4 equal groups (Quartiles).
+- This is for the entire company, not per department (No Partitioning Clause).
+*/
+
+SELECT
+	emp_name,
+    department,
+    salary,
+    NTILE(4) OVER(ORDER BY salary DESC) as salary_quartile
+FROM employees_wf;
+
+/*
+================================================================================
+🎯 Challenge #1
+================================================================================
+
+Using the same employees_wf table.
+
+SQL Task:
+Return the following columns using a percentage-based ranking window function:
+- emp_name
+- department
+- salary
+- salary_percent_rank
+
+Rules:
+- Calculate the salary percent rank within each department (PARTITION BY).
+- You decide the ordering (Typically descending for highest-to-lowest ranking).
+
+Note: After this, we will hit exactly one CUME_DIST() challenge before advancing 
+to the highly anticipated LAG() and LEAD() time-series functions!
+*/
+
+SELECT
+	emp_name,
+    department,
+    salary,
+    PERCENT_RANK() OVER(Partition by department ORDER BY salary DESC) salary_percent_rank
+FROM employees_wf;
 
 
 

@@ -501,6 +501,345 @@ SELECT
 	END AS Grid_Risk_Assessment
 FROM CTE_Master_tactical_grid;
 
+/*
+================================================================================
+Challenge #1 (MySQL): The Justice League Combat Training Leaderboard
+================================================================================
+
+1. SQL Task
+The Watchtower Tactical Core is tracking training simulation scores for various 
+heroes across different combat sectors. They need a ranked leaderboard to award 
+commendations. Write a single MySQL query that projects the following columns:
+
+-- SectorName: 
+   The training environment sector.
+
+-- HeroName: 
+   The identity of the operative.
+
+-- Score: 
+   The raw combat score achieved.
+
+-- Row_Num: 
+   Assign a strict, sequential row integer to every record within each combat 
+   sector, ordered from highest score to lowest score. (No duplicates allowed).
+
+-- Rank_Skip: 
+   Assign a rank to each hero within their sector based on their score (highest 
+   to lowest). If two heroes have matching scores, they must receive the same 
+   rank number, and the next rank down the line must skip ahead to account for 
+   the tie.
+
+-- Rank_Dense: 
+   Assign a rank to each hero within their sector based on their score (highest 
+   to lowest). If two heroes tie, they must receive the same rank number, but 
+   the next rank down must continue sequentially without skipping any numbers.
+*/
+
+DROP TABLE IF EXISTS watchtower_combat_training;
+
+CREATE TABLE watchtower_combat_training (
+    TrainingID INT PRIMARY KEY,
+    SectorName VARCHAR(50),
+    HeroName VARCHAR(50),
+    Score INT
+);
+
+INSERT INTO watchtower_combat_training VALUES 
+(1, 'Sector Delta', 'Batman', 98),
+(2, 'Sector Delta', 'Nightwing', 95),
+(3, 'Sector Delta', 'Robin', 95),       -- Tie score with Nightwing!
+(4, 'Sector Delta', 'Batgirl', 88),
+(5, 'Sector Gamma', 'Superman', 100),
+(6, 'Sector Gamma', 'Flash', 100),      -- Tie score with Superman!
+(7, 'Sector Gamma', 'Cyborg', 90);
+
+SELECT 
+	SectorName,
+    HeroName,
+    Score,
+    ROW_NUMBER() OVER(Partition by SectorName ORDER BY Score DESC) as Row_Num,
+    RANK() OVER(Partition by SectorName ORDER BY Score DESC) as Rank_Skip,
+    DENSE_RANK() OVER(Partition by SectorName ORDER BY Score DESC) as Rank_Dense
+FROM watchtower_combat_training;
+
+/*
+================================================================================
+Challenge #2 (Ranking Functions): Level 2 - Top N Analysis with Dense Ties
+================================================================================
+
+Let's step up the difficulty by implementing a core use case from your syllabus: 
+Top N Analysis combined with an explicit logical data filter via a CTE.
+
+1. SQL Task
+The S.T.A.R. Labs Weapon Testing Matrix is assessing high-energy artillery 
+prototypes across different developmental tiers. They want a report showing the 
+elite tier leaders. Write a single MySQL query utilizing a Common Table 
+Expression (CTE) to produce this clean data asset:
+
+-- Columns Required: 
+   Project TierName, WeaponName, EnergyOutput_Terawatts, and your calculated 
+   rank column.
+
+-- Filter Rule (Top 2 Distinct Tiers): 
+   Restrict the final output grid to display only the weapons that fall into 
+   the top 2 unique highest energy output brackets within each TierName.
+
+-- Tie Handling: 
+   If multiple weapons tie for the top outputs, your filter must look past the 
+   row counts and return all weapons occupying those top 2 distinct performance 
+   plateaus.
+*/
+DROP TABLE IF EXISTS star_labs_weapon_tests;
+
+CREATE TABLE star_labs_weapon_tests (
+    TestID INT PRIMARY KEY,
+    TierName VARCHAR(30),
+    WeaponName VARCHAR(50),
+    EnergyOutput_Terawatts INT
+);
+
+INSERT INTO star_labs_weapon_tests VALUES 
+(1, 'Tier 1', 'Laser Cannon A', 500),
+(2, 'Tier 1', 'Laser Cannon B', 500), -- Tied for 1st!
+(3, 'Tier 1', 'Plasma Rifle',   450), -- 2nd unique highest output!
+(4, 'Tier 1', 'Sonic Blaster',  400), -- 3rd
+(5, 'Tier 2', 'Quantum Beam',    900),
+(6, 'Tier 2', 'Gravity Waver',   850),
+(7, 'Tier 2', 'Antimatter Core', 850), -- Tied for 2nd unique highest!
+(8, 'Tier 2', 'Photon Missile',  700);
+
+with cte_weapons_ranking as
+(
+SELECT 
+	TierName,
+    WeaponName,
+    EnergyOutput_Terawatts,
+    DENSE_RANK() OVER(PARTITION BY TierName ORDER BY EnergyOutput_Terawatts DESC) as weapon_rank
+FROM star_labs_weapon_tests)
+
+SELECT *
+FROM cte_weapons_ranking
+WHERE weapon_rank <= 2;
+
+/*
+================================================================================
+Challenge #3 (Ranking Functions): Level 3 - Data Segmentation & Equalizing Processing Loads
+================================================================================
+
+Let's expand your integer-based ranking mastery to cover another high-impact 
+data engineering and analytics pattern from your blueprint checklist: 
+Data Segmentation & Equalizing Load Processing utilizing NTILE().
+
+1. SQL Task
+Wayne Enterprises operates an array of defense monitoring satellites. Due to 
+sudden bandwidth constraints, the telemetry data pipeline is congested. They 
+need to distribute incoming telemetry logs across multiple background servers. 
+Write a single MySQL query that satisfies these load-balancing rules:
+
+-- Columns Required: 
+   Project LogID, SectorCode, ThreatSeverity, and your segmented bucket ID.
+
+-- ServerBucketID (Data Segmentation): 
+   Divide the logs inside each SectorCode into exactly 3 equal-sized processing 
+   buckets.
+
+-- Priority Distribution: 
+   Within each sector partition, the data streams must be sorted sequentially 
+   from the absolute highest ThreatSeverity score down to the lowest before 
+   being bucketed. This ensures that critical, high-alert threats are grouped 
+   together into the top operational segments.
+*/
+
+DROP TABLE IF EXISTS wayne_satellite_load;
+
+CREATE TABLE wayne_satellite_load (
+    LogID INT PRIMARY KEY,
+    SectorCode VARCHAR(20),
+    ThreatSeverity INT
+);
+
+INSERT INTO wayne_satellite_load VALUES 
+(1, 'Sector-X', 95),
+(2, 'Sector-X', 88), -- Sector-X has 5 total rows!
+(3, 'Sector-X', 72),
+(4, 'Sector-X', 60),
+(5, 'Sector-X', 45),
+(6, 'Sector-Y', 99),
+(7, 'Sector-Y', 91), -- Sector-Y has 3 total rows!
+(8, 'Sector-Y', 30);
+
+SELECT 
+	LogID,
+    SectorCode,
+    ThreatSeverity,
+    NTILE(3) OVER(Partition by SectorCode ORDER BY ThreatSeverity DESC) ServerBucketID
+FROM wayne_satellite_load;
+
+/*
+================================================================================
+Challenge #4 (Ranking Functions): Level 4 - Percentage-Based Data Distribution Analysis
+================================================================================
+
+Let's transition directly to the next vital bullet point on your list: 
+Percentage-Based Ranking Functions utilizing CUME_DIST() and PERCENT_RANK(). 
+
+1. SQL Task
+The Watchtower Core Grid is monitoring deep-space communications array frequencies 
+for potential alien interception signatures. They need to analyze signal strength 
+anomalies based on relative percentiles to flag high-risk anomalies. Write a 
+single MySQL query that provides these analytical columns:
+
+-- Columns Required: 
+   Project ArrayID, SignalFrequency_MHz, and NoiseFloor_Db.
+
+-- Percent_Rank_Score (PERCENT_RANK Analysis): 
+   Calculate the relative rank of each row's NoiseFloor_Db within the entire 
+   table, expressed as a fraction between 0 and 1. Sort the signals from lowest 
+   noise floor to highest noise floor to track progression.
+
+-- Cumulative_Dist_Score (CUME_DIST Analysis): 
+   Calculate the cumulative distribution of each row's NoiseFloor_Db across 
+   the entire table. Sort from lowest noise floor to highest.
+
+-- Risk_Classification (Conditional Percentile Profiling): 
+   Use a standard derived table subquery or CTE layer to check your 
+   Cumulative_Dist_Score. If a signal occupies the top 20% highest noise floors 
+   of the entire system (meaning its cumulative distribution score is strictly 
+   greater than 0.80), label it 'CRITICAL FREQUENCY SURGE'. 
+   Otherwise, label it 'Normal Background Static'.
+*/
+DROP TABLE IF EXISTS watchtower_signals;
+
+CREATE TABLE watchtower_signals (
+    ArrayID INT PRIMARY KEY,
+    SignalFrequency_MHz DECIMAL(10,2),
+    NoiseFloor_Db INT
+);
+
+INSERT INTO watchtower_signals VALUES 
+(101, 1420.40, 30),  -- Pristine baseline signal
+(102, 1665.00, 45),
+(103, 1720.10, 45),  -- Tied values!
+(104, 2200.00, 60),  
+(105, 4800.00, 95);  -- Extreme Outlier (Top 20% bracket anchor)
+
+SELECT
+	*,
+    CASE 
+		WHEN Cumulative_Dist_Score > 0.80 THEN 'CRITICAL FREQUENCY SURGE'
+        ELSE 'Normal Background Static'
+	END Risk_Classification
+FROM (
+SELECT 
+	*,
+    PERCENT_RANK() OVER(ORDER BY NoiseFloor_Db) Percent_Rank_Score,
+    CUME_DIST() OVER(ORDER BY NoiseFloor_Db) Cumulative_Dist_Score
+FROM watchtower_signals)t;
+
+/*
+================================================================================
+Challenge #5: Time Series Analysis — Month-over-Month (MoM) Tactical Incursions
+================================================================================
+
+1. SQL Task
+The Watchtower Strategic Command is tracking monthly alien incursion counts 
+across different planetary sectors. They need a continuous chronological 
+timeline report to identify escalation rates. Write a single MySQL query that 
+produces these exact analytical columns:
+
+-- SectorName: 
+   The designated spatial sector.
+
+-- IncursionMonth: 
+   The numeric representation of the calendar month.
+
+-- Current_Month_Incursions: 
+   The raw number of attacks recorded for that month.
+
+-- Prior_Month_Incursions (LAG Analysis): 
+   Use a value window function to fetch the incursion count from the immediate 
+   prior month within that specific sector. If a month has no historical 
+   baseline data (like the very first month of tracking), cleanly default the 
+   output value to 0.
+
+-- MoM_Escalation_Delta (Time-Series Comparison): 
+   Calculate the literal net change in attacks between periods by running the 
+   subtraction: (Current Month Incursions - Prior Month Incursions).
+*/
+
+DROP TABLE IF EXISTS watchtower_incursion_timeline;
+
+CREATE TABLE watchtower_incursion_timeline (
+    LogID INT PRIMARY KEY,
+    SectorName VARCHAR(30),
+    IncursionMonth INT, -- 1 = Jan, 2 = Feb, 3 = Mar
+    IncursionCount INT
+);
+
+INSERT INTO watchtower_incursion_timeline VALUES 
+(1, 'Sector-Arcturus', 1, 12),
+(2, 'Sector-Arcturus', 2, 18), -- Feb vs Jan: Delta +6
+(3, 'Sector-Arcturus', 3, 15), -- Mar vs Feb: Delta -3
+(4, 'Sector-Vega',     1, 40), -- New Sector Partition!
+(5, 'Sector-Vega',     2, 38); -- Feb vs Jan: Delta -2
+
+SELECT
+	*,
+    Current_Month_Incursions - Prior_Month_Incursions as MoM_Escalation_Delta
+FROM (
+SELECT 
+	SectorName,
+    IncursionMonth,
+    IncursionCount as Current_Month_Incursions,
+    LAG(IncursionCount,1,0) OVER(PARTITION BY SectorName ORDER BY IncursionMonth) as Prior_Month_Incursions
+FROM watchtower_incursion_timeline
+)t;
+
+/*
+================================================================================
+Challenge #6 (Value Functions): Level 2 - Time Gaps Analysis (User Retention & Event Contiguity)
+================================================================================
+
+Let's pivot directly to another heavy data engineering and analytics pattern 
+explicitly detailed in your blueprint checklist: Time Gaps Analysis / Event 
+Contiguity Profiling.
+
+1. SQL Task
+The Watchtower Core Shield Network is monitoring sudden chronological security 
+breaches across various power nodes. To calculate defensive response windows, 
+engineers must identify how much time elapses between consecutive attacks on 
+the same asset. Write a single MySQL query utilizing a CTE or Subquery to 
+provide this advanced tracking diagnostic:
+
+-- Columns Required: 
+   Project NodeID, BreachTime, and your calculated metrics.
+
+-- Next_Breach_Time (LEAD Analysis): 
+   Use a value window function to scan forward inside your timeline and project 
+   the timestamp of the very next breach targeting that specific NodeID.
+
+-- Minutes_Between_Breaches (Time-Gap Delta Analysis): 
+   Calculate the exact length of time that passed between the current breach 
+   and the next breach expressed as a whole integer count of total minutes.
+   (MySQL Engine Tool: TIMESTAMPDIFF(MINUTE, start_time, end_time))
+
+-- Asset_Status (Conditional Stream Boundary Mapping): 
+   Use a searched CASE statement on your outer layer to categorize the node's 
+   temporal risk state:
+   - If Minutes_Between_Breaches is strictly less than or equal to 30 
+     -> 'RAPID REPEAT ATTACK: CRITICAL'
+   - If a breach represents the absolute last recorded event for that node 
+     timeline (Next_Breach_Time IS NULL) -> 'System Stable: Monitoring active'
+   - For any other window duration -> 'Standard Tactical Delta'
+*/
+
+
+
+
+
+
+
 
 
 
