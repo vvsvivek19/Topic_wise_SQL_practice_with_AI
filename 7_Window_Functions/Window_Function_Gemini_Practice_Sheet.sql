@@ -834,8 +834,69 @@ provide this advanced tracking diagnostic:
    - For any other window duration -> 'Standard Tactical Delta'
 */
 
+DROP TABLE IF EXISTS watchtower_shield_breaches;
 
+CREATE TABLE watchtower_shield_breaches (
+    LogID INT PRIMARY KEY,
+    NodeID VARCHAR(30),
+    BreachTime DATETIME
+);
 
+INSERT INTO watchtower_shield_breaches VALUES 
+(101, 'Node-Alpha', '2026-07-01 08:00:00'),
+(102, 'Node-Alpha', '2026-07-01 08:15:00'), -- Gap: 15 mins (Rapid!)
+(103, 'Node-Alpha', '2026-07-01 09:30:00'), -- Gap: 75 mins (Standard)
+(104, 'Node-Beta',  '2026-07-01 08:00:00'), -- New Node Partition!
+(105, 'Node-Beta',  '2026-07-01 08:45:00'); -- Gap: 45 mins (Standard)
+
+SELECT 
+	*,
+    CASE
+		WHEN Minutes_Between_Breaches <= 30 THEN 'RAPID REPEAT ATTACK: CRITICAL'
+        WHEN Minutes_Between_Breaches IS NULL THEN 'System Stable: Monitoring active'
+        ELSE 'Standard Tactical Delta'
+	END Asset_Status
+FROM
+(
+SELECT 
+	LogID,
+    NodeID,
+    BreachTime,
+    LEAD(BreachTime) OVER(Partition by NodeID ORDER BY BreachTime) Next_Breach_Time,
+    TIMESTAMPDIFF(Minute,BreachTime,LEAD(BreachTime) OVER(Partition by NodeID ORDER BY BreachTime)) Minutes_Between_Breaches
+FROM watchtower_shield_breaches
+)t;
+
+/*
+================================================================================
+Challenge #7 (Value Functions): Level 3 - Anchor Extremes via FIRST_VALUE & LAST_VALUE
+================================================================================
+
+Let's explore the final pair of value functions on your technical syllabus: 
+FIRST_VALUE() and LAST_VALUE(). These functions allow us to look across a 
+timeline partition and pick out specific extreme values from the absolute 
+beginning and the absolute end of our collection.
+
+This challenge contains one of the most heavily exploited structural traps 
+in intermediate SQL technical filters.
+
+1. SQL Task
+The Watchtower Aeronautical Deck is monitoring the flight velocity profiles of 
+autonomous drone test flights. Engineers need to verify acceleration efficiency 
+by comparing each point in time against the drone's absolute baseline anchors. 
+Write a single MySQL query that computes these columns:
+
+-- Columns Required: 
+   Output LogID, DroneCode, LogTime, and Velocity_Mach.
+
+-- Launch_Velocity (FIRST_VALUE Analysis): 
+   Project the drone's absolute first recorded velocity (chronologically sorted 
+   by LogTime) onto every row within that drone's partition.
+
+-- Terminal_Velocity (LAST_VALUE Analysis): 
+   Project the drone's absolute last recorded velocity (chronologically sorted 
+   by LogTime) onto every row within that drone's partition.
+*/
 
 
 

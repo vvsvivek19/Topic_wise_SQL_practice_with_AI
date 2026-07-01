@@ -484,7 +484,24 @@ SELECT
     PERCENT_RANK() OVER(Partition by department ORDER BY salary DESC) salary_percent_rank
 FROM employees_wf;
 
+/*
+================================================================================
+🎯 One Final Question on Percentage Rankings
+================================================================================
 
+Using the same employees_wf table.
+
+SQL Task:
+Return the following columns using a cumulative distribution window function:
+- emp_name
+- department
+- salary
+- salary_cumulative_distribution
+
+Rules:
+- Calculate the metric within each department (PARTITION BY).
+- Order the rows within each partition by salary descending (ORDER BY salary DESC).
+*/
 
 
 
