@@ -898,10 +898,166 @@ Write a single MySQL query that computes these columns:
    by LogTime) onto every row within that drone's partition.
 */
 
+DROP TABLE IF EXISTS watchtower_drone_telemetry;
 
+CREATE TABLE watchtower_drone_telemetry (
+    LogID INT PRIMARY KEY,
+    DroneCode VARCHAR(30),
+    LogTime TIME,
+    Velocity_Mach DECIMAL(10,2)
+);
 
+INSERT INTO watchtower_drone_telemetry VALUES 
+(1, 'Drone-X1', '14:00:00', 1.20), -- First Launch Velocity for X1
+(2, 'Drone-X1', '15:00:00', 3.50), 
+(3, 'Drone-X1', '16:00:00', 4.80), -- Last Terminal Velocity for X1
+(4, 'Drone-Y2', '14:00:00', 0.90), -- First Launch Velocity for Y2
+(5, 'Drone-Y2', '15:00:00', 2.10); -- Last Terminal Velocity for Y2
 
+SELECT
+	*,
+    FIRST_VALUE(Velocity_Mach) OVER(PARTITION BY DroneCode Order By LogTime) as Launch_Velocity,
+    First_value(Velocity_Mach) OVER(PARTITION BY DroneCode Order By LogTime DESC) as Terminal_Velocity, -- using first_value to implement last value functionality
+	Last_value(Velocity_Mach) OVER(PARTITION BY DroneCode Order By LogTime ASC ROWS BETWEEN CURRENT ROW and UNBOUNDED FOLLOWING) as Terminal_Velocity1
+FROM watchtower_drone_telemetry;
 
+/*
+================================================================================
+Challenge #8 (Value Functions Master Capstone): Time Gaps & Customer Retention
+================================================================================
+
+Let's conclude your Value Functions section with a comprehensive challenge that 
+tests Time Gaps & Retention Analysis—a primary requirement on your syllabus.
+
+1. SQL Task
+The Watchtower Support Core monitors distress beacon transmissions from deep-space 
+colonies. To optimize rescue response grids, engineers must track colony beacon 
+session habits. Write a single MySQL query utilizing a CTE that creates a 
+master diagnostics asset with these columns:
+
+-- Columns Required: 
+   Project ColonyID, LogTimestamp, and SignalStatus.
+
+-- First_Signal_Type (FIRST_VALUE Analysis): 
+   Identify the absolute first SignalStatus code sent by that colony 
+   chronologically.
+
+-- Mins_Since_Prior_Signal (LAG Delta Analysis): 
+   Calculate the exact number of whole minutes that elapsed between the current 
+   signal timestamp and the immediate prior signal timestamp for that specific 
+   colony.
+   - Defensive Rule: If it is the first signal from a colony, default the 
+     elapsed minutes to 0.
+
+-- Colony_Retention_Category (Conditional Retention Analysis): 
+   Use a searched CASE statement inside your outer query layer to classify the 
+   colony's network connection health:
+   - If Mins_Since_Prior_Signal is strictly greater than 120 (2 hours) 
+     -> 'DORMANT PROFILE: RETENTION RISK'
+   - If Mins_Since_Prior_Signal is between 1 and 30 minutes inclusive 
+     -> 'High Continuity Stream'
+   - For any other row (including the 0 default placeholders) 
+     -> 'Standard Connection Interval'
+*/
+
+DROP TABLE IF EXISTS watchtower_beacon_logs;
+
+CREATE TABLE watchtower_beacon_logs (
+    LogID INT PRIMARY KEY,
+    ColonyID VARCHAR(30),
+    LogTimestamp DATETIME,
+    SignalStatus VARCHAR(20)
+);
+
+INSERT INTO watchtower_beacon_logs VALUES 
+(1, 'Colony-Alpha', '2026-07-02 01:00:00', 'PING'),     -- First signal for Alpha
+(2, 'Colony-Alpha', '2026-07-02 01:15:00', 'ALERT'),    -- Gap: 15 mins (High Continuity)
+(3, 'Colony-Alpha', '2026-07-02 04:30:00', 'CRITICAL'), -- Gap: 195 mins (Dormant Risk!)
+(4, 'Colony-Beta',  '2026-07-02 01:00:00', 'PING'),     -- New Colony Partition!
+(5, 'Colony-Beta',  '2026-07-02 01:45:00', 'PING');     -- Gap: 45 mins (Standard)
+
+SELECT
+	*,
+    CASE
+		WHEN Mins_Since_Prior_Signal > 120 THEN 'DORMANT PROFILE: RETENTION RISK'
+        WHEN Mins_Since_Prior_Signal BETWEEN 1 AND 30 THEN 'High Continuity Stream'
+        ELSE 'Standard Connection Interval'
+	END as Colony_Retention_Category
+FROM (SELECT 
+	ColonyID,
+    LogTimestamp,
+    SignalStatus,
+    FIRST_VALUE(SignalStatus) OVER(PARTITION BY ColonyID Order by LogTimestamp) First_Signal_Type,
+    LAG(LogTimestamp,1,0) OVER(Partition by ColonyID Order By LogTimestamp) as previous,
+    coalesce(TIMESTAMPDIFF(Minute,LAG(LogTimestamp,1,0) OVER(Partition by ColonyID Order By LogTimestamp),LogTimestamp), 0) Mins_Since_Prior_Signal
+FROM watchtower_beacon_logs
+)t;
+
+/*
+================================================================================
+Challenge #9 (MySQL): The Global Power Grid Anomaly Monitor
+================================================================================
+
+1. SQL Task
+The Watchtower Engineering Sector needs to isolate extreme load spikes across 
+the mainframe grid. Write a single MySQL query utilizing a Common Table 
+Expression (CTE) layer to generate a high-level anomaly report satisfying 
+these operational metrics:
+
+-- The CTE Layer (Calculate Streaming Baselines):
+   - Rolling_Avg_Energy (Moving Window): Calculate a 3-row moving average of 
+     the EnergyDraw_GW column for each SubstationID, chronologically sorted 
+     by LogTime. The frame must encompass the current record and the immediate 
+     2 preceding records.
+   - Prev_EnergyDraw (Value Look-back): Use a value function to capture the 
+     EnergyDraw_GW of the immediate prior record within that substation's timeline.
+   - Defensive Fallback Rule: If a record is the absolute first entry in a 
+     timeline partition and has no prior row to look back at, dynamically 
+     default its Prev_EnergyDraw value to match its current row's EnergyDraw_GW value.
+
+-- The Outer Layer (Identify & Filter Peak Anomalies):
+   - Query your CTE and use an advanced ranking function to identify the absolute 
+     peak row (highest calculated Rolling_Avg_Energy) for each unique SubstationID.
+   - Columns to Output: Return SubstationID, LogTime, EnergyDraw_GW, 
+     Prev_EnergyDraw, and Rolling_Avg_Energy.
+   - Tie Handling: If there is a tie for the highest moving average within a 
+     substation, return all tied rows.
+*/
+
+DROP TABLE IF EXISTS watchtower_power_grid;
+
+CREATE TABLE watchtower_power_grid (
+    LogID INT PRIMARY KEY,
+    SubstationID VARCHAR(30),
+    LogTime TIME,
+    EnergyDraw_GW DECIMAL(10,2)
+);
+
+INSERT INTO watchtower_power_grid VALUES 
+(1, 'Sub-Alpha', '08:00:00', 120.00), -- Prev_EnergyDraw should be 120.00 (Self)
+(2, 'Sub-Alpha', '09:00:00', 150.00), -- Prev: 120.00
+(3, 'Sub-Alpha', '10:00:00', 180.00), -- Prev: 150.00 | Rolling Avg: (120+150+180)/3 = 150.00 (Peak!)
+(4, 'Sub-Alpha', '11:00:00', 90.00),  -- Prev: 180.00 | Rolling Avg: (150+180+90)/3 = 140.00
+(5, 'Sub-Beta',  '08:00:00', 300.00), -- Prev_EnergyDraw should be 300.00 (Self)
+(6, 'Sub-Beta',  '09:00:00', 450.00), -- Prev: 300.00
+(7, 'Sub-Beta',  '10:00:00', 210.00); -- Prev: 450.00 | Rolling Avg: (300+450+210)/3 = 320.00 (Peak!)
+
+SELECT
+	*
+FROM(
+With CTE_streaming_baselines AS
+(
+SELECT 
+	*,
+	AVG(EnergyDraw_GW) OVER(Partition by SubstationID ORDER BY LogTime ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) Rolling_Avg_Energy,
+    LAG(EnergyDraw_GW,1,EnergyDraw_GW) OVER(PARTITION BY SubstationID ORDER BY LogTime) Prev_EnergyDraw
+FROM watchtower_power_grid)
+
+SELECT
+	*,
+	RANK() OVER(Partition by SubstationID ORDER BY Rolling_Avg_Energy DESC) as max_rolling_avg_energy
+FROM CTE_streaming_baselines)t
+WHERE max_rolling_avg_energy = 1;
 
 
 

@@ -503,6 +503,207 @@ Rules:
 - Order the rows within each partition by salary descending (ORDER BY salary DESC).
 */
 
+SELECT 
+	emp_name,
+    department,
+    salary,
+    CUME_DIST() OVER(PARTITION BY department ORDER BY salary) as salary_cumulative_distribution
+FROM employees_wf;
+
+CREATE TABLE monthly_sales (
+    sales_month DATE,
+    sales_amount INT
+);
+
+INSERT INTO monthly_sales VALUES
+('2023-01-01',10000),
+('2023-02-01',12000),
+('2023-03-01',11000),
+('2023-04-01',15000),
+('2023-05-01',17000),
+('2023-06-01',16000),
+('2023-07-01',19000),
+('2023-08-01',21000),
+('2023-09-01',20500),
+('2023-10-01',23000),
+('2023-11-01',25000),
+('2023-12-01',27000);
+
+/*
+================================================================================
+Business Scenario:
+The CEO asks: "For each month, show me the previous month's sales."
+
+Challenge #1
+Return the following columns:
+- sales_month
+- sales_amount
+- previous_month_sales
+================================================================================
+*/
+
+SELECT 
+	*,
+    LAG(sales_amount,1,0) OVER(Order by sales_month) as previous_month_sales
+FROM monthly_sales;
+
+/*
+================================================================================
+🚀 Challenge #2 (This is where LAG becomes powerful)
+================================================================================
+
+Management now asks:
+"For every month, show me how much sales changed compared to the previous month."
+
+SQL Task:
+Return the following columns to perform a period-over-period variance analysis:
+- sales_month
+- sales_amount
+- previous_month_sales
+- sales_difference
+
+Where:
+- sales_difference = sales_amount - previous_month_sales
+*/
+
+SELECT 
+	*,
+    LAG(sales_amount,1,0) OVER(Order by sales_month) as previous_month_sales,
+    sales_amount - LAG(sales_amount,1,0) OVER(Order by sales_month) as sales_difference
+FROM monthly_sales;
+
+/*
+================================================================================
+🔥 Challenge #3 (A Very Common Interview Question)
+================================================================================
+
+Management asks:
+"Show the percentage growth compared to the previous month."
+
+SQL Task:
+Return the following columns to perform a MoM growth tracking analysis:
+- sales_month
+- sales_amount
+- previous_month_sales
+- growth_percentage
+
+Formula:
+  ((sales_amount - previous_month_sales) / previous_month_sales) * 100
+
+Operational Constraint:
+- The first month has no historical baseline (Previous Sales = NULL or 0).
+- Your query must implement structural defenses to avoid divide-by-zero crashes.
+*/
+SELECT
+	*,
+    ROUND((CAST((sales_amount - previous_month_sales) AS FLOAT)/NULLIF(previous_month_sales,0)) * 100,2) as growth_percentage
+FROM (
+SELECT 
+	*,
+    LAG(sales_amount,1) OVER(Order by sales_month) as previous_month_sales
+FROM monthly_sales)t;
+
+/*
+================================================================================
+🔥 Challenge #4 — LEAD()
+================================================================================
+
+Business Scenario:
+The sales director asks:
+"For each month, show me the next month's sales and calculate how much sales 
+are expected to change compared to the current month."
+
+SQL Task:
+Return the following columns:
+- sales_month
+- sales_amount
+- next_month_sales
+- expected_change
+
+Where:
+  expected_change = next_month_sales - sales_amount
+
+⭐ Bonus Challenge (Interview Level):
+Extend your query logic (using an outer query layer or direct evaluation) 
+to classify the expected direction by adding a final column:
+- sales_trend
+
+Rules for sales_trend:
+- expected_change > 0    -> 'Growth'
+- expected_change < 0    -> 'Decline'
+- expected_change = 0    -> 'No Change'
+- expected_change IS NULL -> 'No Future Data'
+*/
+SELECT
+	*,
+    CASE 
+		WHEN expected_change > 0 THEN 'Growth'
+        WHEN expected_change < 0 THEN 'Decline'
+        WHEN expected_change is null then 'No Future Data'
+        WHEN expected_change = 0 then 'No Change'
+	END as sales_trend
+FROM
+(
+SELECT 
+	*,
+    LEAD(sales_amount,1) OVER(Order by sales_month) as next_month_sales,
+    LEAD(sales_amount,1) OVER(Order by sales_month) - sales_amount as expected_change
+FROM monthly_sales)t;
+
+/*
+================================================================================
+🔥 Challenge #5 — FIRST_VALUE()
+================================================================================
+
+Using the same monthly_sales table.
+
+SQL Task:
+Return the following columns to measure baseline corporate growth over time:
+- sales_month
+- sales_amount
+- first_month_sales
+- growth_since_first_month
+
+Where:
+- first_month_sales = The sales_amount from the very first month in the timeline.
+- growth_since_first_month = sales_amount - first_month_sales
+*/
+
+SELECT 
+	*,
+    FIRST_VALUE(sales_amount) OVER(Order by sales_month) as first_month_sales,
+    sales_amount -  FIRST_VALUE(sales_amount) OVER(Order by sales_month) as growth_since_first_month
+FROM monthly_sales;
+
+/*
+================================================================================
+🔥 Challenge #6 — LAST_VALUE()
+================================================================================
+
+Using the same monthly_sales table.
+
+SQL Task:
+Return the following columns to measure variance against your final benchmark:
+- sales_month
+- sales_amount
+- last_month_sales
+- difference_from_last_month
+
+Where:
+- last_month_sales = The sales_amount from the absolute final month in the timeline (December).
+- difference_from_last_month = last_month_sales - sales_amount
+
+⚠️ Architectural Reminder: 
+Remember how the default frame clause changes when an ORDER BY is introduced! 
+Ensure your window frame is explicitly configured to look ahead to the end of 
+the partition, or your LAST_VALUE() will get stuck on the current row.
+*/
+
+SELECT 
+	*,
+    LAST_VALUE(sales_amount) OVER(Order by sales_month ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as last_month_sales,
+    LAST_VALUE(sales_amount) OVER(Order by sales_month ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) - sales_amount as difference_from_last_month
+FROM monthly_sales;
 
 
 
