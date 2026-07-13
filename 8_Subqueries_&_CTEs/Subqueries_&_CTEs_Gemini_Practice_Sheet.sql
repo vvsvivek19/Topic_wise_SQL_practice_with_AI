@@ -388,9 +388,135 @@ FROM port_shipments
 WHERE (HazardClass, CargoWeight_Tons) IN 
 (SELECT HazardClass, MAX(CargoWeight_Tons) FROM port_shipments GROUP BY HazardClass);
 
+/*
+================================================================================
+Challenge: The SELECT Clause Correlated Scalar Subquery
+================================================================================
 
+1. SQL Task
+The Gotham City Meteorological Network monitors weather sensor installations 
+across the region. Maintenance supervisors need a operational report that 
+displays granular sensor metrics side-by-side with localized environmental 
+reference baselines. Write a single MySQL query utilizing a Scalar Subquery 
+inside the SELECT projection list to produce this asset:
 
+-- Columns Required: 
+   Project SensorID, LocationZone, Temperature_Celsius, and your calculated 
+   baseline column (Zone_Average_Temperature).
 
+-- Zone_Average_Temperature (The SELECT Clause Subquery): 
+   For every individual sensor row evaluated, your query must execute an inline 
+   scalar subquery that calculates the mathematical average temperature of all 
+   sensors located within that exact same LocationZone.
+
+-- Strict Constraint: 
+   Do not use any JOIN statements or Window Functions (OVER()) for this 
+   challenge. Solve it purely by applying a row-by-row correlated subquery 
+   inside the main SELECT projection block.
+*/
+
+DROP TABLE IF EXISTS weather_sensors;
+
+CREATE TABLE weather_sensors (
+    SensorID INT PRIMARY KEY,
+    LocationZone VARCHAR(30),
+    SensorType VARCHAR(20),
+    Temperature_Celsius DECIMAL(5,2)
+);
+
+INSERT INTO weather_sensors VALUES 
+(1, 'Gotham-North', 'Thermal', 12.50),
+(2, 'Gotham-North', 'Baro',    14.50), -- Avg for North: (12.5 + 14.5)/2 = 13.50
+(3, 'Arkham-Island', 'Thermal',  8.00),
+(4, 'Arkham-Island', 'Hydro',   10.00), -- Avg for Arkham: (8.0 + 10.0)/2 = 9.00
+(5, 'Gotham-North', 'Hydro',   13.50); -- Wait, new row for North! (12.5+14.5+13.5)/3 = 13.50
+
+SELECT 
+	m.SensorID,
+    m.LocationZone,
+    m.Temperature_Celsius,
+    (SELECT AVG(Temperature_Celsius) FROM weather_sensors s WHERE s.LocationZone = m.LocationZone) as Zone_Average_Temperature
+FROM weather_sensors m;
+/*
+================================================================================
+Challenge #8 (Subqueries): Level 8 - Advanced Staging in the JOIN Clause
+================================================================================
+
+1. SQL Task
+The Wayne Enterprises Quantum Computing Division tracks server node processing 
+errors (node_error_logs) alongside a main master inventory table (mainframe_nodes).
+
+Data architects want a comprehensive stability report that shows all production 
+nodes alongside their total error counts. Write a single MySQL query that satisfies 
+these advanced engineering parameters:
+
+-- Columns Required: 
+   Project NodeID, NodeName, OperationalStatus, and Total_Critical_Errors.
+
+-- The JOIN Subquery Layer: 
+   You must write an independent table subquery nested directly inside a LEFT JOIN 
+   clause that scans node_error_logs. This inner query must pre-filter for errors 
+   marked strictly as ErrorSeverity = 'Critical' and group them by NodeID to 
+   count total errors per node. Alias this counted column.
+
+-- The Outer Preservation Rule: 
+   Because we are using a LEFT JOIN against the master inventory, nodes that 
+   have zero critical errors must still appear in the final report. For these 
+   stable nodes, their Total_Critical_Errors column must display a clean 0 
+   placeholder instead of a raw database NULL value.
+
+-- Strict Constraint: 
+   You cannot filter the error severity or perform the grouping aggregation 
+   in the outer query's main WHERE or GROUP BY layers. All error consolidation 
+   and filtering must occur entirely inside the JOIN clause subquery staging box.
+*/
+DROP TABLE IF EXISTS node_error_logs;
+DROP TABLE IF EXISTS mainframe_nodes;
+
+CREATE TABLE mainframe_nodes (
+    NodeID INT PRIMARY KEY,
+    NodeName VARCHAR(50),
+    OperationalStatus VARCHAR(20)
+);
+
+CREATE TABLE node_error_logs (
+    LogID INT PRIMARY KEY,
+    NodeID INT,
+    ErrorMessage VARCHAR(100),
+    ErrorSeverity VARCHAR(20)
+);
+
+INSERT INTO mainframe_nodes VALUES 
+(101, 'Quantum-Core-01', 'Active'),
+(102, 'Quantum-Core-02', 'Active'),
+(103, 'Storage-Vault-A', 'Maintenance'),
+(104, 'Backup-Grid-Zero', 'Standby');
+
+INSERT INTO node_error_logs VALUES 
+(1, 101, 'Sub-atomic sync failure',  'Critical'),
+(2, 101, 'Thermal baseline drift',  'Low'),
+(3, 101, 'Entanglement collapse',   'Critical'), -- Node 101 has 2 Critical errors!
+(4, 103, 'Magnetic cell discharge', 'Critical'); -- Node 103 has 1 Critical error!
+-- Nodes 102 and 104 have absolutely zero error logs.
+
+SELECT 
+	m.NodeID,
+    m.NodeName,
+    m.OperationalStatus,
+    coalesce(s.Total_Critical_Errors,0) as Total_Critical_Errors
+FROM mainframe_nodes m
+LEFT JOIN (
+SELECT 
+	NodeID,
+    COUNT(*) as Total_Critical_Errors
+FROM node_error_logs
+WHERE ErrorSeverity = 'Critical'
+GROUP BY NodeID)s
+ON m.NodeID = s.NodeID;
+
+-- ======================================================================================================================================
+--                                                             CTEs
+-- ======================================================================================================================================
 
 
 

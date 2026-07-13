@@ -172,13 +172,121 @@ SELECT
 FROM employees_sub 
 WHERE EXISTS (SELECT 1 FROM projects WHERE projects.emp_id = employees_sub.emp_id);
 
+/*
+================================================================================
+🔥 Challenge #5 — NOT EXISTS
+================================================================================
+
+Business Scenario:
+HR wants to identify employees who are not assigned to any project.
+
+SQL Task:
+Return the following columns to isolate unallocated personnel:
+- emp_name
+- department
+
+Rules:
+- Use a NOT EXISTS clause to filter out anyone present in the projects table.
+- Do not use a JOIN statement.
+- Do not use a NOT IN clause (which can fail completely if null values exist).
+- Correlate the inner table with the outer employee table.
+
+--------------------------------------------------------------------------------
+🔥 Final Challenge — The Correlated Subquery Classic
+--------------------------------------------------------------------------------
+
+This is one of the most frequently asked SQL interview questions of all time.
+
+Business Scenario:
+Management wants to identify employees who earn more than the average salary 
+of their own department.
+
+SQL Task:
+Return the following columns:
+- emp_name
+- department
+- salary
+
+Rules:
+- Use a correlated subquery in the WHERE clause.
+- Do not use a window function.
+- Do not use a derived table.
+- The inner query must depend row-by-row on the current row of the outer query.
+*/
+
+SELECT
+	emp_name,
+    department
+FROM employees_sub 
+WHERE NOT EXISTS (SELECT 1 FROM projects WHERE projects.emp_id = employees_sub.emp_id);
+
+SELECT
+	emp_name,
+    department,
+    salary
+FROM employees_sub m
+WHERE salary > (SELECT AVG(salary) FROM employees_sub s WHERE s.department = m.department);
 
 
+/*
+================================================================================
+Challenge 1 — IN
+================================================================================
+
+Business Scenario:
+Return employees who belong to departments that have at least one employee 
+earning more than ₹80,000.
+
+SQL Task:
+Return the employee detail rows where the department identifier matches the list 
+of departments containing high-earning personnel.
+
+Rules:
+- Use an independent subquery within a WHERE ... IN clause.
+- Ensure the inner query targets the list of department names or IDs based 
+  on the ₹80,000 salary filter threshold.
+*/
+
+/*
+================================================================================
+Challenge 2 — ANY
+================================================================================
+
+Business Scenario:
+Return employees whose salary is greater than at least one salary in the HR department.
+
+SQL Task:
+Isolate employee rows where the individual compensation exceeds the minimum threshold 
+found within the human resources team.
+
+Rules:
+- Use the quantified comparison operator: > ANY (subquery)
+- The subquery must isolate all salaries explicitly belonging to the 'HR' department.
+*/
+
+/*
+================================================================================
+Challenge 3 — ALL
+================================================================================
+
+Business Scenario:
+Return employees whose salary is greater than every salary in the HR department.
+
+SQL Task:
+Isolate employee records where the individual compensation strictly exceeds the 
+absolute maximum benchmark within the human resources team.
+
+Rules:
+- Use the quantified comparison operator: > ALL (subquery)
+- The subquery must isolate all salaries explicitly belonging to the 'HR' department.
+- Note the operational shift here: while > ANY targets greater than the minimum, 
+  > ALL demands the value be greater than the maximum!
+*/
 
 
-
-
-
+-- ======================================================================================================================================
+--                                                             CTEs
+-- ======================================================================================================================================
 
 
 
