@@ -518,6 +518,443 @@ ON m.NodeID = s.NodeID;
 --                                                             CTEs
 -- ======================================================================================================================================
 
+/*
+================================================================================
+Challenge #1 (CTE): Level 1 - Standalone Non-Recursive CTE
+================================================================================
+
+1. SQL Task
+The S.T.A.R. Labs Particle Accelerator Grid is recording raw metrics from its 
+high-energy collision chambers. To calibrate the primary magnets, engineers 
+require a report detailing adjusted particle speeds. Write a single MySQL 
+query utilizing a standalone Common Table Expression (CTE) that fulfills 
+these staging rules:
+
+-- The CTE Staging Layer (CTE_accelerator_metrics):
+   - Query the star_labs_accelerator_logs table.
+   - Project LogID, CoreSection, SystemStatus, and the raw ParticleVelocity_kms.
+   - Calculate a new column aliased as OptimizedVelocity by scaling the raw 
+     ParticleVelocity_kms up by exactly 5% (multiply by 1.05).
+
+-- The Outer Primary Query:
+   - Reference your freshly staged CTE virtual table.
+   - Project all columns (LogID, CoreSection, SystemStatus, ParticleVelocity_kms, 
+     and OptimizedVelocity).
+   - Filter the final output grid to display only those records where the 
+     SystemStatus is strictly equal to 'Stable' AND the computed 
+     OptimizedVelocity is strictly greater than 5000.00.
+*/
+
+DROP TABLE IF EXISTS star_labs_accelerator_logs;
+
+CREATE TABLE star_labs_accelerator_logs (
+    LogID INT PRIMARY KEY,
+    CoreSection VARCHAR(30),
+    ParticleVelocity_kms DECIMAL(10,2),
+    SystemStatus VARCHAR(20)
+);
+
+INSERT INTO star_labs_accelerator_logs VALUES 
+(1, 'Section-Alpha', 4800.00, 'Stable'),   -- Opt: 4800 * 1.05 = 5040 (Keep!)
+(2, 'Section-Alpha', 5100.00, 'Warning'),  -- Opt: 5355 but Warning status! (Drop)
+(3, 'Section-Beta',  4200.00, 'Stable'),   -- Opt: 4410 (Below 5000 baseline -> Drop)
+(4, 'Section-Gamma', 4950.00, 'Stable');   -- Opt: 4950 * 1.05 = 5197.5 (Keep!)
+
+WITH CTE_accelerator_metrics as
+(
+	SELECT
+		LogID, 
+        CoreSection,
+        SystemStatus,
+        ParticleVelocity_kms,
+        ParticleVelocity_kms * 1.05 as OptimizedVelocity
+	FROM star_labs_accelerator_logs
+)
+SELECT
+	*
+FROM CTE_accelerator_metrics
+WHERE SystemStatus = 'Stable' and OptimizedVelocity > 5000;		
+
+/*
+================================================================================
+Challenge #2 (CTEs): Level 2 - Multiple & Nested CTE Chaining
+================================================================================
+
+1. SQL Task
+The Wayne Enterprises Quantum Computing Division monitors network traffic flows 
+across active mainframe sectors. To audit pipeline strain, infrastructure 
+architects want an operational report isolating high-volume server groups. 
+Write a single MySQL query utilizing Nested/Chained CTEs to satisfy these metrics:
+
+-- CTE Layer 1 (CTE_raw_filtering):
+   - Scan the wayne_quantum_logs base physical table.
+   - Extract the columns NodeGroup, DataProcessed_GB, and Status.
+   - Filter out records early, keeping only rows where Status = 'Active'.
+   - Create a calculated column aliased as DataProcessed_Bits by multiplying 
+     DataProcessed_GB by exactly 8 (converting gigabytes to gigabits).
+
+-- CTE Layer 2 (CTE_aggregated_nodes):
+   - Crucial Nesting Constraint: This second CTE must read directly from your 
+     first CTE (CTE_raw_filtering) rather than the base physical table.
+   - Group rows by NodeGroup.
+   - Calculate Avg_Bits_Processed (the mathematical average of your freshly 
+     calculated DataProcessed_Bits column).
+   - Calculate Total_Logs_Count (a structural count of total records processed 
+     for that group).
+
+-- Outer Primary Query:
+   - Select all available aggregated metrics from CTE_aggregated_nodes.
+   - Apply a strict filter constraint to return only those node groups that 
+     have a Total_Logs_Count strictly greater than or equal to 2.
+*/
+
+	DROP TABLE IF EXISTS wayne_quantum_logs;
+
+CREATE TABLE wayne_quantum_logs (
+    LogID INT PRIMARY KEY,
+    NodeGroup VARCHAR(30),
+    DataProcessed_GB DECIMAL(10,2),
+    Status VARCHAR(20)
+);
+
+INSERT INTO wayne_quantum_logs VALUES 
+(1, 'Group-Omega',  50.00,  'Active'),   -- Bits: 400
+(2, 'Group-Omega',  120.00, 'Active'),   -- Bits: 960  -> Omega: Avg = 680, Count = 2 (KEEP!)
+(3, 'Group-Alpha',  80.00,  'Active'),   -- Bits: 640
+(4, 'Group-Alpha',  90.00,  'Inactive'), -- Inactive! Dropped early in CTE 1. -> Alpha count becomes 1 (DROP)
+(5, 'Group-Sigma',  200.00, 'Active');   -- Bits: 1600 -> Sigma count = 1 (DROP)
+
+WITH CTE_raw_filtering AS
+(
+	SELECT 
+		NodeGroup, 
+        DataProcessed_GB,
+        Status,
+        DataProcessed_GB * 8 as DataProcessed_Bits
+    FROM wayne_quantum_logs
+    WHERE status = 'Active'
+)
+, CTE_aggregated_nodes as
+(
+SELECT
+	NodeGroup,
+    AVG(DataProcessed_Bits) as Avg_Bits_Processed,
+    COUNT(*) as Total_Logs_Count
+FROM CTE_raw_filtering
+GROUP BY NodeGroup
+)
+
+SELECT * FROM CTE_aggregated_nodes
+WHERE Total_Logs_Count >= 2;
+
+/*
+================================================================================
+Challenge #3 (CTEs): Level 3 - The Recursive CTE (Self-Referencing Loops)
+================================================================================
+
+Let's complete your CTE module with the absolute peak requirement on your syllabus: 
+Recursive CTEs.
+
+Recursive CTEs are highly unique because they reference themselves in a loop. They 
+are used extensively by Data Engineers to map out network graphs, hierarchical 
+organizational charts, multi-tier product bills of materials, or to programmatically 
+generate custom dates and sequence numbers on the fly.
+
+1. SQL Task
+The Watchtower Communication Relay Sector monitors signal beams hopping through 
+deep-space communication nodes. To audit data routing efficiency, engineers need 
+to trace the physical path and calculate total transmission hop levels from a 
+master root node down to every connected leaf node. Write a single MySQL query 
+utilizing a Recursive CTE to map this network tree:
+
+-- Columns Required: 
+   Project NodeID, ParentNodeID, HopLevel, and NetworkPath.
+
+-- The Anchor Member: 
+   - Identify the root entry of your system—the node that has no parent 
+     (ParentNodeID IS NULL).
+   - Set its initial structural HopLevel baseline to 1.
+   - Construct its base NetworkPath string to display its own NodeID cast or 
+     formatted as a character sequence.
+
+-- The Recursive Member: 
+   - Combine the anchor data by referencing the CTE back onto the physical base 
+     table (using a UNION ALL operator) where the base table's ParentNodeID 
+     matches the active CTE's NodeID.
+   - For each recursive iteration, increment the HopLevel by exactly +1.
+   - Dynamically append the newly discovered node to the end of your tracking 
+     path string using the native text combiner: CONCAT(prior_path, ' -> ', current_node)
+
+-- Outer Pass: 
+   Select all records from your recursive container, sorted chronologically 
+   by HopLevel ascending.
+*/
+
+DROP TABLE IF EXISTS watchtower_network_nodes;
+
+CREATE TABLE watchtower_network_nodes (
+    NodeID VARCHAR(30) PRIMARY KEY,
+    ParentNodeID VARCHAR(30)
+);
+
+INSERT INTO watchtower_network_nodes VALUES 
+('Root-Alpha',  NULL),          -- The anchor source node!
+('Relay-Beta',  'Root-Alpha'),  -- Hop level 2
+('Relay-Gamma', 'Root-Alpha'),  -- Hop level 2
+('Pod-Delta',   'Relay-Beta'),   -- Hop level 3 (Child of Beta)
+('Leaf-Epsilon', 'Pod-Delta');   -- Hop level 4 (Child of Delta)
+
+SELECT
+	*
+FROM watchtower_network_nodes;
+
+WITH RECURSIVE CTE_network_tree as
+(
+	SELECT
+		NodeID, 
+        ParentNodeID,
+        1 as HopLevel,
+        CAST(NodeID as CHAR(1000)) as NetworkPath
+	FROM watchtower_network_nodes
+    WHERE ParentNodeID is NULL
+    UNION ALL
+    -- rescursive query
+    SELECT
+		nn.NodeID,
+        nn.ParentNodeID,
+        nt.Hoplevel + 1 as HopLevel ,
+        CONCAT(nt.NetworkPath,' -> ' ,nn.NodeID)
+    FROM watchtower_network_nodes  nn
+    INNER JOIN CTE_network_tree nt
+    ON nn.ParentNodeID = nt.NodeID 
+)
+SELECT
+	*
+FROM CTE_network_tree;
+
+/*
+================================================================================
+Challenge #4 (CTEs): Level 4 - Intermediate Data Engineering Nested Pipeline
+================================================================================
+
+1. SQL Task
+The Watchtower Supply Chain Command regulates weapons and tech shipments from 
+external corporate vendors. Data analysts need an aggregated breakdown of 
+supplier logistics. Write a single MySQL query utilizing Nested/Chained CTEs 
+to build this data model:
+
+-- CTE Layer 1 (CTE_completed_sales):
+   - Scan the watchtower_orders base physical table.
+   - Project OrderID, SupplierID, ProductID, and calculate a new column 
+     aliased as Gross_Value (Quantity * UnitPrice).
+   - Filter out background noise early: only keep rows where 
+     OrderStatus = 'Completed'.
+
+-- CTE Layer 2 (CTE_supplier_aggregates):
+   - Nesting Constraint: This CTE must read directly from your first CTE 
+     (CTE_completed_sales) and perform a relational INNER JOIN against the 
+     master registry table watchtower_suppliers on the SupplierID key.
+   - Group the combined data stream by SupplierName.
+   - Calculate Total_Spend_USD (the sum of your calculated Gross_Value column).
+   - Calculate Unique_Products_Count (the count of distinct product IDs 
+     supplied by that vendor).
+
+-- Outer Primary Query:
+   - Select all columns and records from CTE_supplier_aggregates.
+   - Apply a strict filtering constraint to isolate high-value vendors where 
+     Total_Spend_USD is strictly greater than 10000.00.
+*/
+
+DROP TABLE IF EXISTS watchtower_orders;
+DROP TABLE IF EXISTS watchtower_suppliers;
+
+CREATE TABLE watchtower_suppliers (
+    SupplierID INT PRIMARY KEY,
+    SupplierName VARCHAR(50)
+);
+
+CREATE TABLE watchtower_orders (
+    OrderID INT PRIMARY KEY,
+    SupplierID INT,
+    ProductID INT,
+    Quantity INT,
+    UnitPrice DECIMAL(10,2),
+    OrderStatus VARCHAR(20)
+);
+
+INSERT INTO watchtower_suppliers VALUES 
+(1, 'GothCorp Industrial'),
+(2, 'LexCorp Labs'),
+(3, 'Kord Industries');
+
+INSERT INTO watchtower_orders VALUES 
+(101, 1, 901, 10, 500.00,  'Completed'), -- GothCorp: 5,000
+(102, 1, 901, 20, 400.00,  'Completed'), -- GothCorp: 8,000 -> Total = 13,000 | Unique Prod = 1 (KEEP!)
+(103, 2, 902, 5,  1000.00, 'Cancelled'), -- Cancelled! Dropped early in CTE 1.
+(104, 2, 903, 2,  1500.00, 'Completed'), -- LexCorp: 3,000 -> Total = 3,000 (Below 10k threshold -> DROP)
+(105, 3, 904, 12, 1000.00, 'Completed'); -- Kord: 12,000 -> Total = 12,000 | Unique Prod = 1 (KEEP!)
+
+WITH CTE_completed_sales AS
+(
+	SELECT
+		OrderID,
+        SupplierID,
+        ProductID,
+        Quantity * UnitPrice as GrossValue
+    FROM watchtower_orders
+    WHERE OrderStatus = 'Completed'
+)
+, CTE_supplier_aggregates as
+(
+	SELECT 
+		ws.SupplierName,
+        SUM(cs.GrossValue) as Total_Spend_USD,
+        COUNT(DISTINCT cs.ProductID) as Unique_Products_Count
+	FROM CTE_completed_sales as cs
+    JOIN watchtower_suppliers ws
+    ON cs.SupplierID = ws.SupplierID 
+    GROUP BY ws.SupplierName
+)
+SELECT *
+FROM CTE_supplier_aggregates
+WHERE Total_Spend_USD > 10000;
+
+/*
+================================================================================
+Challenge #5 (CTEs): Level 5 - Advanced Recursive CTE with Cumulative Rolling Calculations
+================================================================================
+
+1. SQL Task
+The Watchtower Command Grid regulates military resource allocations across 
+deep-space command branches. To audit funding distributions, system architects 
+need to track the exact reporting line of each division alongside its cumulative 
+upstream allocation footprint. Write a single MySQL query utilizing a Recursive 
+CTE to satisfy these metrics:
+
+-- Columns Required: 
+   Project UnitID, CommandChainPath, HierarchyDepth, and Cumulative_Allocation_USD.
+
+-- The Anchor Member: 
+   - Isolate the absolute root of the command structure—the central headquarters 
+     where ParentUnitID IS NULL.
+   - Set its base HierarchyDepth value to 1.
+   - Construct its initial CommandChainPath text tracking string to display its 
+     own UnitID scaled to a safe variable characters width (CAST(UnitID AS CHAR(1000))).
+   - Initialize its Cumulative_Allocation_USD to match its own base ResourceAllocation.
+
+-- The Recursive Member: 
+   - Loop down the tree structure by joining the base table (watchtower_command_units) 
+     against your recursive container on the parent-child key relationship.
+   - Increment HierarchyDepth by exactly +1 on each loop pass.
+   - Dynamically append child units to the path tracking string: 
+     CONCAT(parent_path, ' -> ', child_unit).
+   - Accumulation Goal: Calculate Cumulative_Allocation_USD by adding the child unit's 
+     current ResourceAllocation directly to the accumulated Cumulative_Allocation_USD 
+     inherited from its immediate parent row.
+
+-- Outer Primary Pass: 
+   Select all columns from the recursive collection, ordered cleanly by 
+   HierarchyDepth ascending.
+*/
+
+DROP TABLE IF EXISTS watchtower_command_units;
+
+CREATE TABLE watchtower_command_units (
+    UnitID VARCHAR(30) PRIMARY KEY,
+    ParentUnitID VARCHAR(30),
+    ResourceAllocation INT
+);
+
+INSERT INTO watchtower_command_units VALUES 
+('HQ-Central',     NULL,             5000), -- Anchor: Cum = 5000 | Depth = 1
+('Division-Alpha', 'HQ-Central',     2000), -- Alpha: Cum = 5000 + 2000 = 7000 | Depth = 2
+('Division-Beta',  'HQ-Central',     3000), -- Beta:  Cum = 5000 + 3000 = 8000 | Depth = 2
+('Squad-One',      'Division-Alpha',  800), -- Squad1: Cum = 7000 + 800 = 7800  | Depth = 3
+('Squad-Two',      'Division-Alpha', 1200), -- Squad2: Cum = 7000 + 1200 = 8200 | Depth = 3
+('Team-Titan',     'Squad-Two',       400); -- Titan:  Cum = 8200 + 400 = 8600  | Depth = 4
+
+SELECT
+	*
+FROM watchtower_command_units;
+
+WITH RECURSIVE CTE_Command_Structure AS
+(
+	SELECT
+    UnitID,
+    1 as HierarchyDepth,
+    CAST(UnitID AS CHAR(1000)) as CommandChainPath,
+    ResourceAllocation as Cumulative_Allocation_USD
+    FROM watchtower_command_units
+    WHERE ParentUnitID IS NULL
+    UNION ALL
+    -- Recursive Query
+    SELECT
+		wcu.UnitID,
+        ccs.HierarchyDepth + 1 AS HierarchyDepth,
+        CONCAT(ccs.CommandChainPath, ' -> ', wcu.UnitID) as CommandChainPath,
+        wcu.ResourceAllocation + ccs.Cumulative_Allocation_USD as Cumulative_Allocation_USD
+    FROM watchtower_command_units as wcu
+    JOIN CTE_Command_Structure as ccs
+    ON wcu.ParentUnitID = ccs.UnitID
+)
+SELECT
+	*
+FROM CTE_Command_Structure
+ORDER BY HierarchyDepth;
+/*
+================================================================================
+Challenge #6 (CTEs): Level 6 - The Capstone Window-CTE Synthesis
+================================================================================
+
+1. SQL Task
+The Watchtower Defense Shield Core tracks raw radiation energy fluctuations across 
+planetary shield sectors. To predict defensive wall fatigue, operations engineers 
+need a report isolating the most recent ping from each sector, along with the 
+immediate drop in signal value from its preceding chronological timeline.
+
+Write a single MySQL query utilizing Chained/Nested CTEs that integrates window 
+functions to satisfy these requirements:
+
+-- CTE Layer 1 (CTE_Chronological_Offsets):
+   - Scan the watchtower_shield_telemetry table.
+   - Project SectorID, LogTime, and SignalStrength.
+   - Use a value window function to fetch the SignalStrength of the immediate 
+     prior row chronologically (sorted by LogTime ascending) within that 
+     sector's partition. Alias this column as Prev_Signal.
+   - Calculate a new column aliased as Signal_Drop by subtracting the current 
+     row's SignalStrength directly from your calculated Prev_Signal column 
+     (Prev_Signal - SignalStrength).
+
+-- CTE Layer 2 (CTE_Recency_Ranking):
+   - Chaining Constraint: Read directly from your first CTE block 
+     (CTE_Chronological_Offsets).
+   - Project all columns.
+   - Use a ranking window function to compute a recency index number aliased 
+     as RecencyRank for each unique SectorID, chronologically ordered so that 
+     the latest (most recent) time record receives a rank of 1.
+
+-- Outer Primary Pass:
+   - Query from your second tier CTE (CTE_Recency_Ranking).
+   - Filter the final output grid to display only the absolute latest record 
+     for each sector (RecencyRank = 1).
+   - If a sector only has a single log line in its history (meaning Prev_Signal 
+     resolves to NULL), handle the boundary condition by using a clean 0 
+     placeholder for its final output.
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

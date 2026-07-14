@@ -288,6 +288,331 @@ Rules:
 --                                                             CTEs
 -- ======================================================================================================================================
 
+/*
+================================================================================
+🔥 Challenge #1 (Warm-up) — Common Table Expressions (CTEs)
+================================================================================
+
+Business Requirement:
+Show employees whose salary is greater than the company average.
+
+SQL Task:
+Create a Common Table Expression (CTE) that calculates and isolates the single, 
+global company average salary first. Then, reference that CTE in your primary 
+query to perform the filtering and map the metrics side-by-side.
+
+Columns to Return:
+- emp_name
+- department
+- salary
+- company_avg_salary
+
+Rules:
+- You must use a WITH clause to initialize the CTE container before the main query.
+- Do not write the scalar subquery directly inline inside the WHERE clause.
+- Ensure the final result grid only includes records where salary strictly 
+  exceeds the calculated company average.
+*/
+
+WITH CTE_company_avg AS
+(
+SELECT
+	AVG(salary) as company_avg_salary
+FROM employees_sub)
+SELECT
+	emp_name,
+    department,
+    salary,
+    (SELECT company_avg_salary FROM CTE_company_avg) company_avg_salary
+FROM employees_sub
+WHERE salary > (SELECT company_avg_salary FROM CTE_company_avg);
+
+/*
+================================================================================
+🔥 Challenge #2 — Multiple CTEs
+================================================================================
+
+Business Scenario:
+Management wants to identify departments whose average salary is above the 
+company average salary.
+
+SQL Task:
+Construct a modular query utilizing two distinct Common Table Expressions (CTEs) 
+chained together sequentially. The first CTE isolates the global corporate baseline, 
+the second calculates localized department metrics, and the outer query handles 
+the cross-granularity filter evaluation.
+
+Columns to Return:
+- department
+- department_avg_salary
+- company_avg_salary
+
+Rules:
+- Initialize the query using a single WITH clause containing two comma-separated CTE blocks.
+  - CTE 1: Compute the global company_avg_salary across the entire employees_sub table.
+  - CTE 2: Group by department to calculate the department_avg_salary for each team.
+- Combine and filter these datasets in the final query using a cross-join or relational key join.
+- Restrict the output grid exclusively to rows where department_avg_salary strictly 
+  exceeds the company_avg_salary.
+*/
+
+WITH CTE_company_avg as
+(
+	SELECT AVG(salary) as company_avg_salary
+    FROM employees_sub
+)
+, CTE_depart_avg as
+(
+	SELECT
+		department,
+        AVG(salary) as department_avg_salary
+	FROM employees_sub
+    GROUP BY department
+)
+SELECT
+	da.department,
+    da.department_avg_salary,
+    ca.company_avg_salary
+FROM CTE_depart_avg da
+CROSS JOIN CTE_company_avg ca
+WHERE da.department_avg_salary > ca.company_avg_salary;
+
+/*
+================================================================================
+🔥 Challenge #3 (This is where CTEs shine) — The Metric Pipeline
+================================================================================
+
+Business Scenario:
+Management wants to identify employees who earn above their department average, 
+while projecting detailed variance analysis fields.
+
+SQL Task:
+Construct a multi-tiered data pipeline utilizing two chained Common Table 
+Expressions (CTEs) to isolate team-level benchmarks, combine granular data, 
+and filter outliers in the final query block.
+
+Columns to Return:
+- emp_name
+- department
+- salary
+- department_avg_salary
+- salary_difference
+
+Rules:
+- Use two CTEs initialized via a single WITH clause.
+  - CTE 1 (Department Averages): Compute the average salary for each unique 
+    department using a GROUP BY clause.
+  - CTE 2 (Enriched Detail Staging): Read from the base employees table and 
+    JOIN it directly to CTE 1 on the department key. Project the employee 
+    details along with the calculated department_avg_salary.
+- The Final Query:
+  - Query from CTE 2.
+  - Apply the mathematical variance expression: (salary - department_avg_salary) 
+    aliased as salary_difference.
+  - Filter the results using a WHERE clause to restrict the output grid strictly 
+    to employees whose individual salary is greater than their department_avg_salary.
+*/
+
+WITH CTE_department_avgs AS
+(
+	SELECT
+        department,
+        AVG(salary) as department_avg_salary
+	FROM employees_sub
+    GROUP BY department
+)
+, CTE_salary_diff as
+(
+SELECT
+	es.emp_name,
+    es.department,
+    es.salary,
+    da.department_avg_salary,
+    es.salary - da.department_avg_salary as salary_difference
+FROM employees_sub es
+JOIN CTE_department_avgs da 
+ON es.department = da.department
+)
+SELECT
+	*
+FROM CTE_salary_diff
+WHERE salary > department_avg_salary;
+
+/*
+================================================================================
+🔥 Challenge #4 (The Last Non-Recursive One) — CTE Reusability
+================================================================================
+
+Business Scenario:
+Management wants to identify departments that have:
+1. More than 2 employees, and
+2. An average salary above the company average.
+
+SQL Task:
+Construct a multi-tiered pipeline using three chained Common Table Expressions 
+(CTEs) to isolate global metrics, aggregate departmental statistics, and handle 
+the final complex multi-conditional filtering layer.
+
+Columns to Return:
+- department
+- employee_count
+- department_avg_salary
+- company_avg_salary
+
+Rules:
+- Use three chained CTEs initialized via a single WITH clause.
+  - CTE 1 (Company Average): Calculate the single, global company average 
+    salary across all records.
+  - CTE 2 (Department Statistics): Group by department to calculate the 
+    employee count (COUNT) and the department average salary (AVG).
+  - CTE 3 (Final Filtered Result): Chain from the previous blocks, combining the 
+    departmental stats with the global benchmark to isolate teams meeting 
+    both target parameters.
+- The Outer Primary Query: 
+  - Select all columns directly from your final filtered CTE to display 
+    the completed asset.
+*/
+
+WITH CTE_company_avg as
+(
+	SELECT
+		AVG(salary) as company_avg_salary
+	FROM employees_sub
+)
+, CTE_department_statistics as
+(
+	SELECT
+		department,
+        COUNT(*) as total_employees,
+        AVG(salary) as department_avg_salary
+	FROM employees_sub
+    GROUP BY department
+    HAVING COUNT(*) > 2 AND (AVG(salary) > (SELECT company_avg_salary FROM CTE_company_avg))
+)
+
+SELECT
+	*
+FROM CTE_department_statistics;
+
+CREATE TABLE employee_hierarchy (
+    emp_id INT,
+    emp_name VARCHAR(50),
+    manager_id INT
+);
+
+INSERT INTO employee_hierarchy VALUES
+(1,'CEO',NULL),
+(2,'CTO',1),
+(3,'CFO',1),
+(4,'IT Manager',2),
+(5,'HR Manager',3),
+(6,'Developer A',4),
+(7,'Developer B',4),
+(8,'HR Executive',5),
+(9,'Intern',6);
+
+/*
+================================================================================
+🔥 Challenge: Recursive CTE — Hierarchical Organization Tree Levels
+================================================================================
+
+Business Requirement:
+Map out the organizational hierarchy of the company, tracking the direct reporting 
+lines and calculating the explicit management depth level for each employee.
+
+SQL Task:
+Construct a Recursive Common Table Expression (CTE) to traverse the reporting chain 
+from the absolute root node down to the bottom tier.
+
+Columns to Return:
+- emp_id
+- emp_name
+- manager_id
+- level
+
+Rules:
+- Use a single recursive WITH clause to establish the looping structure.
+- The Anchor Query: 
+  - Isolate the absolute root executive of the organization (the CEO where 
+    manager_id IS NULL).
+  - Explicitly hardcode the starting baseline level as 1.
+- The Recursive Query:
+  - Join the base employee table back onto the recursive CTE alias.
+  - Establish the parent-child relationship by matching: base_table.manager_id = cte_alias.emp_id
+  - Increment the level column row-by-row on each subsequent loop by exactly +1 (level + 1).
+- Combine the anchor and recursive result sets using a UNION ALL operator.
+- Do not build a hierarchy tracking path string yet; focus purely on the baseline level recursion.
+*/
+
+WITH RECURSIVE CTE_Hierarchy AS
+(
+	SELECT
+		emp_id,
+        emp_name,
+        manager_id,
+        1 as level
+    FROM employee_hierarchy
+    WHERE manager_id is null
+    UNION ALL
+    SELECT
+		eh.emp_id,
+        eh.emp_name,
+        eh.manager_id,
+        ch.Level + 1 as Level
+	FROM employee_hierarchy eh
+    JOIN CTE_Hierarchy ch
+    ON eh.manager_id = ch.emp_id
+)
+SELECT * FROM CTE_Hierarchy;
+
+/*
+================================================================================
+🔥 Final Recursive Challenge — Path Concatenation Hierarchy Matrix
+================================================================================
+
+Business Requirement:
+Trace the full reporting path from the absolute top executive down to every 
+individual employee, projecting the structured organizational tree depth level 
+along with a dynamic text visualization of the management chain.
+
+SQL Task:
+Construct a highly optimized Recursive Common Table Expression (CTE) to build 
+a multi-hop lineage path across reporting layers.
+
+Columns to Return:
+- emp_name
+- level
+- hierarchy_path
+
+Rules:
+- The Anchor Query:
+  - Isolate the absolute root employee node (where manager_id IS NULL).
+  - Explicitly initialize the tree depth baseline level as 1.
+  - Define the base tracking lineage field (hierarchy_path) by using the 
+    employee name. Proactively enforce a wide character type bounds format 
+    (e.g., CAST(emp_name AS CHAR(1000))) to prevent downstream recursive string 
+    truncation failures.
+- The Recursive Query:
+  - Reference your recursive CTE block and perform an INNER JOIN against the 
+    base employee table to build the hierarchy connection.
+  - Link the parent-child node pointers on the manager mapping keys.
+  - Increment the active execution loop layer by exactly +1 (level + 1).
+  - Construct the progressive lineage path string by combining the parent's 
+    inherited string with a specific text structural divider and the current 
+    row's name asset: CONCAT(parent.hierarchy_path, ' -> ', child.emp_name)
+- Combine both execution limbs using a UNION ALL operator.
+- The Outer Pass:
+  - Query from the completed recursive container.
+  - Sort the final grid cleanly to align the reporting structure chronologically.
+*/
+
+
+
+
+
+
+
+
 
 
 
