@@ -605,6 +605,61 @@ Rules:
   - Query from the completed recursive container.
   - Sort the final grid cleanly to align the reporting structure chronologically.
 */
+SELECT
+	*
+FROM employee_hierarchy;
+WITH RECURSIVE CTE_Hierarchy AS
+(
+-- Anchor Query
+	SELECT
+		emp_id,
+		emp_name,
+        manager_id,
+        1 as level,
+        CAST(emp_name as char(1000)) as hierarchy_path
+	FROM employee_hierarchy
+    WHERE manager_id IS NULL
+    UNION ALL
+-- Recursive Query
+	SELECT
+		eh.emp_id,
+		eh.emp_name,
+        eh.manager_id,
+        ch.level + 1 as level,
+        CONCAT(ch.hierarchy_path,'->',eh.emp_name) as hierarchy_path
+	FROM employee_hierarchy as eh
+    JOIN CTE_Hierarchy as ch
+    ON eh.manager_id = ch.emp_id
+)
+SELECT
+	emp_name,
+    level,
+    hierarchy_path
+FROM CTE_Hierarchy;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -942,6 +942,53 @@ functions to satisfy these requirements:
      placeholder for its final output.
 */
 
+DROP TABLE IF EXISTS watchtower_shield_telemetry;
+
+CREATE TABLE watchtower_shield_telemetry (
+    LogID INT PRIMARY KEY,
+    SectorID VARCHAR(30),
+    LogTime TIME,
+    SignalStrength INT
+);
+
+INSERT INTO watchtower_shield_telemetry VALUES 
+(1, 'Sector-Omega', '14:00:00', 100), -- First chronological row for Omega
+(2, 'Sector-Omega', '15:00:00', 85),  -- Prev: 100 | Drop = 100 - 85 = 15
+(3, 'Sector-Omega', '16:00:00', 60),  -- Latest Omega! Prev: 85 | Drop = 85 - 60 = 25 (KEEP Rank 1!)
+(4, 'Sector-Zeta',  '14:00:00', 250), -- First chronological row for Zeta
+(5, 'Sector-Zeta',  '15:00:00', 250), -- Latest Zeta! Prev: 250 | Drop = 250 - 250 = 0 (KEEP Rank 1!)
+(6, 'Sector-Krypton', '12:00:00', 500);-- Only 1 log row! Prev: NULL -> Drop = 0 (KEEP Rank 1!)
+
+WITH CTE_Chronological_Offsets AS
+(
+	SELECT
+		SectorID,
+		LogTime,
+		SignalStrength,
+		coalesce(LAG(SignalStrength,1,SignalStrength) OVER(PARTITION BY SectorID ORDER BY LogTime ASC),0)  as Prev_Signal,
+		(LAG(SignalStrength,1,SignalStrength) OVER(PARTITION BY SectorID ORDER BY LogTime ASC) - SignalStrength) as Signal_Drop
+	FROM watchtower_shield_telemetry
+),
+CTE_Recency_Ranking AS
+(
+	SELECT
+		*,
+        ROW_NUMBER() OVER(PARTITION BY SectorID ORDER BY LogTime DESC) as RecencyRank
+	FROM CTE_Chronological_Offsets
+)
+SELECT
+	*
+FROM CTE_Recency_Ranking
+WHERE RecencyRank = 1;
+
+
+
+
+
+
+
+
+
 
 
 
