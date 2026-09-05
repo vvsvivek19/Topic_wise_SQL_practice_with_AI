@@ -82,7 +82,7 @@ Return Result
 
 Avoid saying that SQL Server executes the view first and then runs the outer query. Instead, explain that the view is **expanded (inlined)** into the user's query before optimization, allowing SQL Server to optimize the entire query as a single unit.
 
-## Q4. What happens if the underlying table structure changes?
+## Q3. What happens if the underlying table structure changes?
 
 ### Answer
 
@@ -108,7 +108,7 @@ In SQL Server, views created using `SELECT *` may require a metadata refresh aft
 
 Avoid using `SELECT *` when creating production views. Explicitly listing required columns makes the view more stable, easier to understand, and less susceptible to unexpected schema changes.
 
-## Q5. Can we perform INSERT, UPDATE, and DELETE operations on a View?
+## Q4. Can we perform INSERT, UPDATE, and DELETE operations on a View?
 
 ### Answer
 
@@ -157,3 +157,34 @@ Instead of memorizing rules, ask yourself:
 > **"Can SQL Server uniquely determine which row in which base table should be modified?"**
 
 If the answer is **yes**, the view is often updatable. If the answer is **no**, it usually isn't.
+
+## Q5. What is the difference between a View and a CTE? When would you choose one over the other?
+
+### Answer
+
+The main difference is their **scope, persistence, and intended purpose**.
+
+A **View** is a persistent database object whose query definition is stored in the database. It can be reused by multiple queries, reports, dashboards, and applications by authorized users.
+
+A **CTE (Common Table Expression)** exists only for the duration of a single SQL statement. It is mainly used to break a complex query into multiple logical steps and improve readability and organization.
+
+Therefore, if the same business logic needs to be reused across multiple reports or applications, I would choose a **View**. If I only need to organize a complicated query into logical steps within a single statement, I would choose a **CTE**.
+
+### Comparison
+
+| Aspect | View | CTE |
+|---|---|---|
+| Scope | Persistent database object | Single SQL statement |
+| Persistence | Definition stored in database | Exists only during query execution |
+| Reusability | Across multiple queries/consumers | Within the current statement |
+| Main Purpose | Reusable business logic and abstraction | Organizing complex queries |
+| Maintenance | View definition must be maintained | No persistent object to maintain |
+| Access | Can be shared with authorized users/applications | Only available within the statement |
+
+### Decision Rule
+
+> **Use a CTE when you need to organize logic within a single query; use a View when that logic needs to become a reusable database object across multiple queries or consumers.**
+
+### Interview Tip
+
+Don't describe a CTE as something that SQL Server "maintains and cleans up." A CTE is not a persistent database object. It exists only for the duration of the SQL statement.
