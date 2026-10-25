@@ -214,6 +214,54 @@ DENSE_RANK() OVER(PARTITION BY Department ORDER BY Salary DESC) as SalaryRank
 FROM Employees
 ORDER BY Department ASC, SalaryRank ASC, EmployeeID ASC;
 
+/*
+==========================================================
+Mixed Practice — Question 1: Customer Purchase Analysis
+==========================================================
+
+Task:
+Identify customers who have placed at least 2 orders
+and whose total spending exceeds 2000.
+
+Required output:
+- CustomerID
+- CustomerName
+- City
+- TotalOrders
+- TotalSpending
+- AverageOrderValue (rounded to 2 decimal places)
+
+Requirements:
+1. At least 2 orders per customer.
+2. Total spending must be greater than 2000.
+3. Sort by TotalSpending DESC, CustomerID ASC.
+4. Exclude customers without orders.
+
+Tables:
+Customers(CustomerID, CustomerName, City)
+Orders(OrderID, CustomerID, OrderDate, OrderAmount)
+
+==========================================================
+*/
+
+-- Write your solution here
+WITH CTE_aggregate_data AS
+(
+SELECT o.CustomerID,
+COUNT(*) TotalOrders,
+SUM(o.OrderAmount) TotalSpending,
+round(AVG(o.OrderAmount),2) AverageOrderValue
+FROM orders o
+LEFT JOIN  customers c
+ON c.CustomerID = o.CustomerID
+GROUP BY o.CustomerID
+HAVING TotalOrders >= 2 AND  TotalSpending > 2000
+)
+SELECT cad.CustomerID, c.CustomerName, c.City, cad.TotalOrders, cad.TotalSpending, cad.AverageOrderValue
+FROM CTE_aggregate_data as cad
+JOIN Customers c 
+ON cad.CustomerID = c.CustomerID;
+
 
 
 
